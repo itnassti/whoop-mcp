@@ -10,7 +10,7 @@ export function buildMcpServer(deps: { tokenStore: TokenStore; credentials: Cred
   const clientFor = (userId: string) =>
     new WhoopClient(
       () => deps.tokenStore.getValidAccessToken(userId),
-      async () => deps.tokenStore.getValidAccessToken(userId), // token-store refreshes internally on expiry
+      async () => deps.tokenStore.forceRefreshAccessToken(userId),
     );
   const h = makeToolHandlers(clientFor);
   const userIdOf = (extra: any): string => extra?.authInfo?.extra?.userId;
@@ -24,6 +24,6 @@ export function buildMcpServer(deps: { tokenStore: TokenStore; credentials: Cred
   reg("get_profile", "Get the user's WHOOP profile (name, email).", {}, h.get_profile);
   reg("get_body_measurement", "Get body measurements (height, weight, max HR).", {}, h.get_body_measurement);
   reg("get_daily_summary", "Get combined recovery + sleep + strain for a single date (YYYY-MM-DD).",
-    { date: z.string() }, h.get_daily_summary);
+    { date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD") }, h.get_daily_summary);
   return server;
 }

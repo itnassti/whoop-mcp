@@ -41,7 +41,18 @@ export class TokenStore {
     if (row.accessTokenExpiresAt.getTime() - Date.now() > EXPIRY_SKEW_MS) {
       return decrypt(row.accessTokenEnc, this.keyHex);
     }
-    const refreshed = await this.refresh(decrypt(row.refreshTokenEnc, this.keyHex));
+    return this.refreshAndStore(userId, row.refreshTokenEnc);
+  }
+
+  async forceRefreshAccessToken(userId: string): Promise<string> {
+    const [row] = await this.db.select().from(schema.whoopTokens)
+      .where(eq(schema.whoopTokens.userId, userId));
+    if (!row) throw new Error("WHOOP not connected");
+    return this.refreshAndStore(userId, row.refreshTokenEnc);
+  }
+
+  private async refreshAndStore(userId: string, encryptedRefreshToken: string): Promise<string> {
+    const refreshed = await this.refresh(decrypt(encryptedRefreshToken, this.keyHex));
     await this.db.update(schema.whoopTokens).set({
       accessTokenEnc: encrypt(refreshed.accessToken, this.keyHex),
       refreshTokenEnc: encrypt(refreshed.refreshToken, this.keyHex),

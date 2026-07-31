@@ -85,6 +85,36 @@ describe("TokenStore.getValidAccessToken (fake db)", () => {
   });
 });
 
+describe("TokenStore.forceRefreshAccessToken (fake db)", () => {
+  it("unconditionally refreshes and persists even when the stored token is not expired", async () => {
+    const row: FakeRow = {
+      userId: "user-1",
+      accessTokenEnc: encrypt("current-access", key),
+      refreshTokenEnc: encrypt("current-refresh", key),
+      accessTokenExpiresAt: new Date(Date.now() + 3600_000), // far in the future, NOT expired
+      scopes: ["offline"],
+      updatedAt: new Date(),
+    };
+    const refresh = vi.fn(
+      async (): Promise<WhoopTokenSet> => ({
+        accessToken: "forced-new-access",
+        refreshToken: "forced-new-refresh",
+        expiresAt: new Date(Date.now() + 3600_000),
+        scopes: ["offline"],
+      }),
+    );
+    const store = new TokenStore(fakeDb(row) as any, key, refresh);
+
+    const at = await store.forceRefreshAccessToken("user-1");
+
+    expect(at).toBe("forced-new-access");
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledWith("current-refresh");
+    expect(decrypt(row.accessTokenEnc, key)).toBe("forced-new-access");
+    expect(decrypt(row.refreshTokenEnc, key)).toBe("forced-new-refresh");
+  });
+});
+
 const url = process.env.DATABASE_URL;
 
 describe.skipIf(!url)("TokenStore integration (real db)", () => {

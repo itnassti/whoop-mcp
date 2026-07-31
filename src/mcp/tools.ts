@@ -27,7 +27,9 @@ export function makeToolHandlers(clientFor: ClientFactory) {
     get_profile: wrap((c) => c.getProfile()),
     get_body_measurement: wrap((c) => c.getBodyMeasurement()),
     get_daily_summary: wrap(async (c, a) => {
-      const range = { start: a.date, end: a.date, limit: 1 };
+      const start = `${a.date}T00:00:00.000Z`;
+      const end = new Date(new Date(start).getTime() + 86_400_000).toISOString();
+      const range = { start, end, limit: 10 };
       const [recovery, sleep, cycles] = await Promise.all([c.getRecovery(range), c.getSleep(range), c.getCycles(range)]);
       return { date: a.date, recovery: recovery[0] ?? null, sleep: sleep[0] ?? null, cycle: cycles[0] ?? null };
     }),
