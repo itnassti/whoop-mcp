@@ -1,0 +1,29 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { WhoopClient } from "../whoop/client.js";
+import { makeToolHandlers, RANGE_SCHEMA } from "./tools.js";
+import type { TokenStore } from "../auth/token-store.js";
+import type { CredentialProvider } from "../whoop/credentials.js";
+
+export function buildMcpServer(deps: { tokenStore: TokenStore; credentials: CredentialProvider }): McpServer {
+  const server = new McpServer({ name: "whoop-mcp", version: "0.1.0" });
+  const clientFor = (userId: string) =>
+    new WhoopClient(
+      () => deps.tokenStore.getValidAccessToken(userId),
+      async () => deps.tokenStore.getValidAccessToken(userId), // token-store refreshes internally on expiry
+    );
+  const h = makeToolHandlers(clientFor);
+  const userIdOf = (extra: any): string => extra?.authInfo?.extra?.userId;
+  const reg = (name: string, description: string, shape: any, fn: any) =>
+    server.registerTool(name, { description, inputSchema: shape }, async (args: any, extra: any) => fn(args, { userId: userIdOf(extra) }));
+
+  reg("get_recovery", "Get WHOOP recovery records (score, HRV, RHR, SpO2, skin temp).", RANGE_SCHEMA, h.get_recovery);
+  reg("get_sleep", "Get WHOOP sleep records (stages, performance, respiratory rate).", RANGE_SCHEMA, h.get_sleep);
+  reg("get_workouts", "Get WHOOP workouts (strain, HR zones, distance).", RANGE_SCHEMA, h.get_workouts);
+  reg("get_cycles", "Get WHOOP physiological cycles (daily strain, energy).", RANGE_SCHEMA, h.get_cycles);
+  reg("get_profile", "Get the user's WHOOP profile (name, email).", {}, h.get_profile);
+  reg("get_body_measurement", "Get body measurements (height, weight, max HR).", {}, h.get_body_measurement);
+  reg("get_daily_summary", "Get combined recovery + sleep + strain for a single date (YYYY-MM-DD).",
+    { date: z.string() }, h.get_daily_summary);
+  return server;
+}
