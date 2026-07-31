@@ -13,6 +13,7 @@ function app() {
         revokeMcpToken: vi.fn(),
         deleteUser: vi.fn(),
       } as any,
+      sessionSecret: "test-session-secret-1234567890",
     }),
   );
   return a;

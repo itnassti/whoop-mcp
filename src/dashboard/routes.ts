@@ -7,16 +7,13 @@ import type { TokenStore } from "../auth/token-store.js";
 export interface DashboardDeps {
   provider: OAuthServerProvider;
   tokenStore: TokenStore;
+  sessionSecret: string;
 }
 
 // Distinguishes the dashboard's own "login via WHOOP" round-trip from real, dynamically
 // registered MCP clients (whose client_id values are CSPRNG-random) — this id is never
 // registered in oauthClients, so it can never collide with one.
 const DASHBOARD_CLIENT_ID = "whoop-mcp-dashboard";
-
-// Session secret should come from the environment in production; this fallback only
-// exists so the dashboard still works (with an insecure cookie) if it isn't set.
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "dev-only-insecure-dashboard-secret";
 
 function page(title: string, body: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${body}</body></html>`;
@@ -35,7 +32,7 @@ export function createDashboardRouter(deps: DashboardDeps): Router {
   router.use(
     cookieSession({
       name: "whoop_dashboard_session",
-      secret: SESSION_SECRET,
+      secret: deps.sessionSecret,
       httpOnly: true,
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,

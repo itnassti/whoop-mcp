@@ -4,6 +4,7 @@ export interface AppConfig {
   databaseUrl: string; encryptionKey: string;
   whoopClientId: string; whoopClientSecret: string;
   publicBaseUrl: string; port: number;
+  sessionSecret: string;
 }
 
 const Schema = z.object({
@@ -13,6 +14,7 @@ const Schema = z.object({
   WHOOP_CLIENT_SECRET: z.string().min(1),
   PUBLIC_BASE_URL: z.string().url(),
   PORT: z.string().regex(/^\d+$/).default("8080"),
+  SESSION_SECRET: z.string().min(16),
 });
 
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
@@ -21,5 +23,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     databaseUrl: p.DATABASE_URL, encryptionKey: p.ENCRYPTION_KEY,
     whoopClientId: p.WHOOP_CLIENT_ID, whoopClientSecret: p.WHOOP_CLIENT_SECRET,
     publicBaseUrl: p.PUBLIC_BASE_URL, port: Number(p.PORT),
+    sessionSecret: p.SESSION_SECRET,
   };
 }

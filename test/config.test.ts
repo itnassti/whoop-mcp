@@ -5,6 +5,7 @@ const base = {
   DATABASE_URL: "postgres://x", ENCRYPTION_KEY: "a".repeat(64),
   WHOOP_CLIENT_ID: "id", WHOOP_CLIENT_SECRET: "secret",
   PUBLIC_BASE_URL: "https://example.com", PORT: "8080",
+  SESSION_SECRET: "test-session-secret-1234567890",
 };
 
 describe("loadConfig", () => {
