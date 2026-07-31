@@ -2,9 +2,8 @@
   "name": "whoop-mcp",
   "version": "1.0.0",
   "type": "module",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
+  "engines": {
+    "node": ">=22"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
