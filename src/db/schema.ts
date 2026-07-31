@@ -46,3 +46,10 @@ export const oauthAuthCodes = pgTable("oauth_auth_codes", {
   scopes: jsonb("scopes").$type<string[]>().notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
+
+// Pending authorizations for the WHOOP leg, keyed by the state we send to WHOOP.
+export const pendingAuthorizations = pgTable("pending_authorizations", {
+  whoopState: text("whoop_state").primaryKey(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
