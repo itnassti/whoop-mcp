@@ -57,46 +57,53 @@ export function createWhoopCallbackRouter(deps: CallbackDeps): Router {
       .where(eq(schema.pendingAuthorizations.whoopState, state));
 
     const payload = pending.payload as PendingPayload;
-    const creds = await deps.credentials.getClientCredentials();
-    const redirectUri = `${deps.publicBaseUrl}/whoop/callback`;
 
-    const tokenSet = await exchangeCodeForTokens(
-      code,
-      redirectUri,
-      creds,
-      payload.whoopCodeVerifier,
-      fetchImpl,
-    );
+    // Express 4 does not catch async rejections; exchangeCodeForTokens/getProfile throw on
+    // WHOOP or network failure, so catch here to avoid a hung request. Never log token/code values.
+    try {
+      const creds = await deps.credentials.getClientCredentials();
+      const redirectUri = `${deps.publicBaseUrl}/whoop/callback`;
 
-    const client = new WhoopClient(
-      async () => tokenSet.accessToken,
-      async () => {
-        throw new Error("WHOOP authorization failed — please reconnect your WHOOP account.");
-      },
-      fetchImpl,
-    );
-    const profile = await client.getProfile();
-    const whoopUserId = String(profile.user_id);
-    const email = typeof profile.email === "string" ? profile.email : null;
+      const tokenSet = await exchangeCodeForTokens(
+        code,
+        redirectUri,
+        creds,
+        payload.whoopCodeVerifier,
+        fetchImpl,
+      );
 
-    const userId = await deps.tokenStore.upsertUserAndTokens(whoopUserId, email, tokenSet);
+      const client = new WhoopClient(
+        async () => tokenSet.accessToken,
+        async () => {
+          throw new Error("WHOOP authorization failed — please reconnect your WHOOP account.");
+        },
+        fetchImpl,
+      );
+      const profile = await client.getProfile();
+      const whoopUserId = String(profile.user_id);
+      const email = typeof profile.email === "string" ? profile.email : null;
 
-    // Mint OUR authorization code, bound to the user + the client's PKCE challenge.
-    const ourCode = randomBytes(32).toString("base64url");
-    await deps.db.insert(schema.oauthAuthCodes).values({
-      codeHash: sha256hex(ourCode),
-      clientId: payload.clientId,
-      userId,
-      redirectUri: payload.clientRedirectUri,
-      codeChallenge: payload.clientCodeChallenge,
-      scopes: payload.scopes,
-      expiresAt: new Date(Date.now() + AUTH_CODE_TTL_MS),
-    });
+      const userId = await deps.tokenStore.upsertUserAndTokens(whoopUserId, email, tokenSet);
 
-    const redirect = new URL(payload.clientRedirectUri);
-    redirect.searchParams.set("code", ourCode);
-    if (payload.clientState !== undefined) redirect.searchParams.set("state", payload.clientState);
-    res.redirect(302, redirect.toString());
+      // Mint OUR authorization code, bound to the user + the client's PKCE challenge.
+      const ourCode = randomBytes(32).toString("base64url");
+      await deps.db.insert(schema.oauthAuthCodes).values({
+        codeHash: sha256hex(ourCode),
+        clientId: payload.clientId,
+        userId,
+        redirectUri: payload.clientRedirectUri,
+        codeChallenge: payload.clientCodeChallenge,
+        scopes: payload.scopes,
+        expiresAt: new Date(Date.now() + AUTH_CODE_TTL_MS),
+      });
+
+      const redirect = new URL(payload.clientRedirectUri);
+      redirect.searchParams.set("code", ourCode);
+      if (payload.clientState !== undefined) redirect.searchParams.set("state", payload.clientState);
+      res.redirect(302, redirect.toString());
+    } catch {
+      res.status(502).send("WHOOP connection failed, please try again.");
+    }
   });
 
   return router;

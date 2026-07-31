@@ -19,6 +19,9 @@ describe("WhoopOAuthProvider.verifyAccessToken", () => {
     expect(resolve).toHaveBeenCalledWith("tok");
     expect(info.token).toBe("tok");
     expect(info.extra?.userId).toBe("u1");
+    // SDK's requireBearerAuth hard-requires a numeric expiresAt in the future.
+    expect(typeof info.expiresAt).toBe("number");
+    expect(info.expiresAt!).toBeGreaterThan(Math.floor(Date.now() / 1000));
   });
 
   it("throws for an unknown token (resolve returns null)", async () => {

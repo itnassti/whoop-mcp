@@ -4,6 +4,11 @@ import type { Response } from "express";
 import type { OAuthServerProvider, AuthorizationParams } from "@modelcontextprotocol/sdk/server/auth/provider.js";
 import type { OAuthRegisteredClientsStore } from "@modelcontextprotocol/sdk/server/auth/clients.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import {
+  InvalidTokenError,
+  InvalidGrantError,
+  UnsupportedGrantTypeError,
+} from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import type {
   OAuthClientInformationFull,
   OAuthTokens,
@@ -29,6 +34,10 @@ const pkceChallenge = (verifier: string) =>
   base64url(createHash("sha256").update(verifier).digest());
 
 const PENDING_TTL_MS = 10 * 60_000;
+// MCP tokens are intentionally long-lived; revocation is handled via mcpTokens.revokedAt
+// (checked in resolveMcpToken). The SDK's requireBearerAuth requires a numeric expiresAt,
+// so we advertise a far-future rolling expiry (1 year, epoch seconds).
+const ACCESS_TOKEN_TTL_SECONDS = 31_536_000;
 
 // Payload persisted for the WHOOP leg of the flow, keyed by whoopState.
 export interface PendingPayload extends Record<string, unknown> {
@@ -46,6 +55,9 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
   get clientsStore(): OAuthRegisteredClientsStore {
     const db = this.deps.db;
     return {
+      // `metadata` holds the SDK's full client record and is the source of truth we return.
+      // A `client_secret` is present only for confidential clients; the SDK's authenticateClient
+      // does a plaintext comparison, so getClient must surface the stored plaintext secret.
       async getClient(clientId: string): Promise<OAuthClientInformationFull | undefined> {
         const [row] = await db
           .select()
@@ -58,11 +70,15 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
           redirect_uris: row.redirectUris,
         } as OAuthClientInformationFull;
       },
+      // Public MCP clients (Claude/ChatGPT) register with token_endpoint_auth_method: "none"
+      // and carry no secret; PKCE protects the flow regardless. The full record (incl. any
+      // client_secret for confidential clients) lives in `metadata`; we do not hash it, since
+      // authenticateClient compares plaintext, so clientSecretHash stays null.
       async registerClient(client): Promise<OAuthClientInformationFull> {
         const full = client as OAuthClientInformationFull;
         await db.insert(schema.oauthClients).values({
           clientId: full.client_id,
-          clientSecretHash: full.client_secret ? sha256hex(full.client_secret) : null,
+          clientSecretHash: null,
           redirectUris: full.redirect_uris,
           metadata: full as unknown as Record<string, unknown>,
         });
@@ -112,7 +128,7 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       .select()
       .from(schema.oauthAuthCodes)
       .where(eq(schema.oauthAuthCodes.codeHash, sha256hex(authorizationCode)));
-    if (!row) throw new Error("invalid_grant");
+    if (!row) throw new InvalidGrantError("invalid or unknown authorization code");
     return row.codeChallenge;
   }
 
@@ -125,25 +141,31 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       .select()
       .from(schema.oauthAuthCodes)
       .where(eq(schema.oauthAuthCodes.codeHash, codeHash));
-    if (!row) throw new Error("invalid_grant");
+    if (!row) throw new InvalidGrantError("invalid or unknown authorization code");
     // Single-use: delete regardless of outcome below.
     await this.deps.db
       .delete(schema.oauthAuthCodes)
       .where(eq(schema.oauthAuthCodes.codeHash, codeHash));
-    if (row.clientId !== client.client_id) throw new Error("invalid_grant");
-    if (row.expiresAt.getTime() < Date.now()) throw new Error("invalid_grant");
+    if (row.clientId !== client.client_id) throw new InvalidGrantError("authorization code was issued to a different client");
+    if (row.expiresAt.getTime() < Date.now()) throw new InvalidGrantError("authorization code expired");
 
     const accessToken = await this.deps.tokenStore.issueMcpToken(row.userId, "oauth");
     return { access_token: accessToken, token_type: "bearer" };
   }
 
   async exchangeRefreshToken(): Promise<OAuthTokens> {
-    throw new Error("unsupported_grant_type");
+    throw new UnsupportedGrantTypeError("refresh_token grant is not supported");
   }
 
   async verifyAccessToken(token: string): Promise<AuthInfo> {
     const r = await this.deps.tokenStore.resolveMcpToken(token);
-    if (!r) throw new Error("invalid_token");
-    return { token, clientId: "mcp", scopes: ["mcp"], extra: { userId: r.userId } };
+    if (!r) throw new InvalidTokenError("invalid or revoked token");
+    return {
+      token,
+      clientId: "mcp",
+      scopes: ["mcp"],
+      expiresAt: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
+      extra: { userId: r.userId },
+    };
   }
 }
