@@ -28,15 +28,22 @@ export function createApp(config: AppConfig): express.Express {
   app.use(createWhoopCallbackRouter({ db, tokenStore, credentials, publicBaseUrl: config.publicBaseUrl }));
   app.use("/dashboard", createDashboardRouter({ provider, tokenStore, sessionSecret: config.sessionSecret }));
 
-  const mcpServer = buildMcpServer({ tokenStore, credentials });
   const auth = requireBearerAuth({ verifier: provider, requiredScopes: ["mcp"] });
   app.all("/mcp", auth, async (req, res) => {
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    res.on("close", () => {
-      void transport.close();
-    });
-    await mcpServer.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+    try {
+      const mcpServer = buildMcpServer({ tokenStore, credentials });
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+      res.on("close", () => {
+        void transport.close();
+        void mcpServer.close();
+      });
+      await mcpServer.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    } catch {
+      if (!res.headersSent) {
+        res.status(500).json({ jsonrpc: "2.0", error: { code: -32603, message: "Internal server error" }, id: null });
+      }
+    }
   });
 
   return app;
