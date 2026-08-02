@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import path from "node:path";
 import express, { Router, type Request, type Response } from "express";
 import cookieSession from "cookie-session";
 import type { OAuthServerProvider } from "@modelcontextprotocol/sdk/server/auth/provider.js";
@@ -95,6 +96,16 @@ export function createDashboardRouter(deps: DashboardDeps): Router {
   });
 
   router.use("/api", createDashboardApiRouter({ tokenStore: deps.tokenStore }));
+
+  // Serves the built shadcn SPA (Task 4). Registered after /connect, /connected, and /api,
+  // so Express matches those first; this only handles real static assets and the SPA
+  // fallback for the dashboard root and unknown client-side routes.
+  const webDist = path.resolve("web/dist"); // resolved from process.cwd() (repo root locally, /app on Railway)
+  router.use(express.static(webDist));
+  router.get(/.*/, (req, res, next) => {
+    if (req.method !== "GET") return next();
+    res.sendFile(path.join(webDist, "index.html"));
+  });
 
   return router;
 }
