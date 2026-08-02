@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { encrypt, decrypt } from "../crypto.js";
 import { schema } from "../db/client.js";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -9,6 +9,13 @@ export type RefreshFn = (refreshToken: string) => Promise<WhoopTokenSet>;
 type Db = NodePgDatabase<typeof schema>;
 const hashToken = (raw: string) => createHash("sha256").update(raw).digest("hex");
 const EXPIRY_SKEW_MS = 60_000;
+
+export interface TokenSummary {
+  id: string;
+  label: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
 
 export class TokenStore {
   constructor(private db: Db, private keyHex: string, private refresh: RefreshFn) {}
@@ -84,6 +91,30 @@ export class TokenStore {
   async revokeMcpToken(raw: string): Promise<void> {
     await this.db.update(schema.mcpTokens).set({ revokedAt: new Date() })
       .where(eq(schema.mcpTokens.tokenHash, hashToken(raw)));
+  }
+
+  async listMcpTokens(userId: string): Promise<TokenSummary[]> {
+    const rows = await this.db.select().from(schema.mcpTokens)
+      .where(and(
+        eq(schema.mcpTokens.userId, userId),
+        eq(schema.mcpTokens.type, "pat"),
+        isNull(schema.mcpTokens.revokedAt),
+      ))
+      .orderBy(desc(schema.mcpTokens.createdAt));
+    return rows.map((r) => ({
+      id: r.tokenHash,
+      label: r.label,
+      createdAt: r.createdAt.toISOString(),
+      lastUsedAt: r.lastUsedAt ? r.lastUsedAt.toISOString() : null,
+    }));
+  }
+
+  async revokeMcpTokenById(userId: string, tokenHash: string): Promise<void> {
+    await this.db.update(schema.mcpTokens).set({ revokedAt: new Date() })
+      .where(and(
+        eq(schema.mcpTokens.tokenHash, tokenHash),
+        eq(schema.mcpTokens.userId, userId),
+      ));
   }
 
   async deleteUser(userId: string): Promise<void> {

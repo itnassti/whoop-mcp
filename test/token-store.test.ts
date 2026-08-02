@@ -151,6 +151,31 @@ describe("TokenStore.upsertUserAndTokens (fake db, transactional)", () => {
   });
 });
 
+describe("TokenStore.listMcpTokens / revokeMcpTokenById (fake db)", () => {
+  it("listMcpTokens maps rows to TokenSummary (id = tokenHash, ISO dates)", async () => {
+    const created = new Date("2026-08-01T10:00:00.000Z");
+    const rows = [
+      { tokenHash: "h1", userId: "u1", type: "pat", label: "cli", createdAt: created, lastUsedAt: null, revokedAt: null },
+    ];
+    const db = {
+      select: () => ({ from: () => ({ where: () => ({ orderBy: async () => rows }) }) }),
+    };
+    const store = new TokenStore(db as any, key, vi.fn());
+    const out = await store.listMcpTokens("u1");
+    expect(out).toEqual([{ id: "h1", label: "cli", createdAt: created.toISOString(), lastUsedAt: null }]);
+  });
+
+  it("revokeMcpTokenById issues a scoped update (userId + tokenHash) setting revokedAt", async () => {
+    let captured: any = null;
+    const db = {
+      update: () => ({ set: (patch: any) => ({ where: async () => { captured = patch; } }) }),
+    };
+    const store = new TokenStore(db as any, key, vi.fn());
+    await store.revokeMcpTokenById("u1", "h1");
+    expect(captured.revokedAt).toBeInstanceOf(Date);
+  });
+});
+
 const url = process.env.DATABASE_URL;
 
 describe.skipIf(!url)("TokenStore integration (real db)", () => {
