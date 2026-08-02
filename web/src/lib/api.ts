@@ -21,6 +21,10 @@ export const api = {
     fetch("/dashboard/api/tokens", { method: "POST", credentials: "include", headers: H, body: JSON.stringify({ label }) }).then(j<{ token: string }>),
   revokeToken: (id: string) =>
     fetch(`/dashboard/api/tokens/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include", headers: H }).then((r) => { if (!r.ok) throw new ApiError(r.status, `HTTP ${r.status}`); }),
+  updateTokenLabel: (id: string, label: string | null) =>
+    fetch(`/dashboard/api/tokens/${encodeURIComponent(id)}`, {
+      method: "PATCH", credentials: "include", headers: H, body: JSON.stringify({ label }),
+    }).then((r) => { if (!r.ok) throw new ApiError(r.status, `HTTP ${r.status}`); }),
   deleteAccount: () =>
     fetch("/dashboard/api/account", { method: "DELETE", credentials: "include", headers: H }).then((r) => { if (!r.ok) throw new ApiError(r.status, `HTTP ${r.status}`); }),
 };

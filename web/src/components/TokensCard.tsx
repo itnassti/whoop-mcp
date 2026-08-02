@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { CopyIcon, Loader2Icon } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableHeader,
@@ -42,9 +43,10 @@ function formatDate(iso: string): string {
 interface TokenRowProps {
   token: TokenSummary;
   onRevoke: (id: string) => Promise<void>;
+  onRename: (token: TokenSummary) => void;
 }
 
-function TokenRow({ token, onRevoke }: TokenRowProps) {
+function TokenRow({ token, onRevoke, onRename }: TokenRowProps) {
   const [open, setOpen] = useState(false);
   const [revoking, setRevoking] = useState(false);
 
@@ -62,29 +64,34 @@ function TokenRow({ token, onRevoke }: TokenRowProps) {
 
   return (
     <TableRow>
-      <TableCell>{token.label ?? <span className="text-muted-foreground">Unlabeled</span>}</TableCell>
+      <TableCell>{token.label ? token.label : <span className="text-muted-foreground">—</span>}</TableCell>
       <TableCell>{formatDate(token.createdAt)}</TableCell>
       <TableCell>{token.lastUsedAt ? formatDate(token.lastUsedAt) : "Never"}</TableCell>
       <TableCell>
-        <AlertDialog open={open} onOpenChange={setOpen}>
-          <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
-            Revoke
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Revoke this token?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Any application using this token will immediately lose access. This can't be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction variant="destructive" onClick={handleConfirm} disabled={revoking}>
-                Revoke
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => onRename(token)}>
+            Rename
+          </Button>
+          <AlertDialog open={open} onOpenChange={setOpen}>
+            <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
+              Revoke
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Revoke this token?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Any application using this token will immediately lose access. This can't be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={handleConfirm} disabled={revoking}>
+                  Revoke
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -94,6 +101,10 @@ export function TokensCard({ onUnauthorized }: { onUnauthorized: () => void }) {
   const [tokens, setTokens] = useState<TokenSummary[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [newToken, setNewToken] = useState<string | null>(null);
+  const [newLabel, setNewLabel] = useState("");
+  const [renaming, setRenaming] = useState<TokenSummary | null>(null);
+  const [renameLabel, setRenameLabel] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
 
   async function fetchTokens() {
     try {
@@ -112,8 +123,9 @@ export function TokensCard({ onUnauthorized }: { onUnauthorized: () => void }) {
   async function handleCreate() {
     setCreating(true);
     try {
-      const { token } = await api.createToken();
+      const { token } = await api.createToken(newLabel.trim() || undefined);
       setNewToken(token);
+      setNewLabel("");
     } catch (err) {
       if (isUnauthorized(err)) onUnauthorized();
       else toast.error(errorMessage(err));
@@ -137,6 +149,30 @@ export function TokensCard({ onUnauthorized }: { onUnauthorized: () => void }) {
     }
   }
 
+  function handleRenameClick(token: TokenSummary) {
+    setRenaming(token);
+    setRenameLabel(token.label ?? "");
+  }
+
+  async function handleRenameSave() {
+    if (!renaming) return;
+    setRenameSaving(true);
+    try {
+      await api.updateTokenLabel(renaming.id, renameLabel.trim() || null);
+      toast.success("Label updated");
+      setRenaming(null);
+      await fetchTokens();
+    } catch (err) {
+      if (isUnauthorized(err)) {
+        onUnauthorized();
+        return;
+      }
+      toast.error(errorMessage(err));
+    } finally {
+      setRenameSaving(false);
+    }
+  }
+
   async function handleCopy() {
     if (!newToken) return;
     try {
@@ -154,10 +190,19 @@ export function TokensCard({ onUnauthorized }: { onUnauthorized: () => void }) {
           <CardTitle>Personal access tokens</CardTitle>
           <CardDescription>Use a token to authenticate MCP clients as your WHOOP account.</CardDescription>
           <CardAction>
-            <Button onClick={handleCreate} disabled={creating}>
-              {creating ? <Loader2Icon className="animate-spin" /> : null}
-              Create token
-            </Button>
+            <div className="flex gap-2">
+              <Input
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="Label (optional)"
+                maxLength={100}
+                className="w-40"
+              />
+              <Button onClick={handleCreate} disabled={creating}>
+                {creating ? <Loader2Icon className="animate-spin" /> : null}
+                Create token
+              </Button>
+            </div>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -179,7 +224,7 @@ export function TokensCard({ onUnauthorized }: { onUnauthorized: () => void }) {
               </TableHeader>
               <TableBody>
                 {tokens.map((token) => (
-                  <TokenRow key={token.id} token={token} onRevoke={handleRevoke} />
+                  <TokenRow key={token.id} token={token} onRevoke={handleRevoke} onRename={handleRenameClick} />
                 ))}
               </TableBody>
             </Table>
@@ -213,6 +258,35 @@ export function TokensCard({ onUnauthorized }: { onUnauthorized: () => void }) {
           </div>
           {newToken ? <ConnectionGuide token={newToken} /> : null}
           <DialogFooter showCloseButton />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={renaming !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenaming(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename token</DialogTitle>
+            <DialogDescription>Give this token a label to help you identify it later.</DialogDescription>
+          </DialogHeader>
+          <Input
+            value={renameLabel}
+            onChange={(e) => setRenameLabel(e.target.value)}
+            placeholder="Label (optional)"
+            maxLength={100}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenaming(null)} disabled={renameSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameSave} disabled={renameSaving}>
+              {renameSaving ? <Loader2Icon className="animate-spin" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
