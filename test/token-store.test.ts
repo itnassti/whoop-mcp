@@ -168,11 +168,19 @@ describe("TokenStore.listMcpTokens / revokeMcpTokenById (fake db)", () => {
   it("revokeMcpTokenById issues a scoped update (userId + tokenHash) setting revokedAt", async () => {
     let captured: any = null;
     const db = {
-      update: () => ({ set: (patch: any) => ({ where: async () => { captured = patch; } }) }),
+      update: () => ({
+        set: (patch: any) => ({
+          where: (cond: any) => {
+            captured = { patch, cond };
+            return Promise.resolve();
+          },
+        }),
+      }),
     };
     const store = new TokenStore(db as any, key, vi.fn());
     await store.revokeMcpTokenById("u1", "h1");
-    expect(captured.revokedAt).toBeInstanceOf(Date);
+    expect(captured.patch.revokedAt).toBeInstanceOf(Date);
+    expect(captured.cond).toBeDefined();
   });
 });
 
@@ -222,5 +230,42 @@ describe.skipIf(!url)("TokenStore integration (real db)", () => {
     expect(unknown).toBeNull();
 
     await store.deleteUser(userId);
+  });
+
+  it("revokeMcpTokenById cannot revoke another user's token (cross-user isolation)", async () => {
+    const db = getDb(url!);
+    const store = new TokenStore(db, key, vi.fn());
+    const whoopUserIdA = "whoop_" + Math.random().toString(36).slice(2);
+    const whoopUserIdB = "whoop_" + Math.random().toString(36).slice(2);
+    const userAId = await store.upsertUserAndTokens(whoopUserIdA, null, {
+      accessToken: "access-a",
+      refreshToken: "refresh-a",
+      expiresAt: new Date(Date.now() + 3600_000),
+      scopes: ["offline"],
+    });
+    const userBId = await store.upsertUserAndTokens(whoopUserIdB, null, {
+      accessToken: "access-b",
+      refreshToken: "refresh-b",
+      expiresAt: new Date(Date.now() + 3600_000),
+      scopes: ["offline"],
+    });
+
+    const rawB = await store.issueMcpToken(userBId, "pat");
+    expect(await store.resolveMcpToken(rawB)).toEqual({ userId: userBId });
+
+    const tokensB = await store.listMcpTokens(userBId);
+    expect(tokensB).toHaveLength(1);
+    const tokenBHash = tokensB[0].id;
+
+    // User A attempts to revoke user B's token by id: must be a no-op.
+    await store.revokeMcpTokenById(userAId, tokenBHash);
+    expect(await store.resolveMcpToken(rawB)).toEqual({ userId: userBId });
+
+    // Positive control: user B revoking their own token does work.
+    await store.revokeMcpTokenById(userBId, tokenBHash);
+    expect(await store.resolveMcpToken(rawB)).toBeNull();
+
+    await store.deleteUser(userAId);
+    await store.deleteUser(userBId);
   });
 });
