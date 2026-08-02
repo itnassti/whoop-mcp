@@ -56,11 +56,40 @@ describe("dashboard API", () => {
     expect(revokeMcpTokenById).toHaveBeenCalledWith("u1", "h1");
   });
 
+  it("DELETE /api/tokens/:id is 401 without a session", async () => {
+    const revokeMcpTokenById = vi.fn();
+    const r = await request(appWith({ revokeMcpTokenById }))
+      .delete("/api/tokens/h1").set("X-Requested-With", "fetch");
+    expect(r.status).toBe(401);
+    expect(revokeMcpTokenById).not.toHaveBeenCalled();
+  });
+
+  it("DELETE /api/tokens/:id is 403 without X-Requested-With", async () => {
+    const revokeMcpTokenById = vi.fn();
+    const r = await request(appWith({ revokeMcpTokenById }, "u1")).delete("/api/tokens/h1");
+    expect(r.status).toBe(403);
+    expect(revokeMcpTokenById).not.toHaveBeenCalled();
+  });
+
   it("DELETE /api/account deletes the user (204)", async () => {
     const deleteUser = vi.fn(async () => undefined);
     const r = await request(appWith({ deleteUser }, "u1"))
       .delete("/api/account").set("X-Requested-With", "fetch");
     expect(r.status).toBe(204);
     expect(deleteUser).toHaveBeenCalledWith("u1");
+  });
+
+  it("DELETE /api/account is 401 without a session", async () => {
+    const deleteUser = vi.fn();
+    const r = await request(appWith({ deleteUser })).delete("/api/account").set("X-Requested-With", "fetch");
+    expect(r.status).toBe(401);
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("DELETE /api/account is 403 without X-Requested-With", async () => {
+    const deleteUser = vi.fn();
+    const r = await request(appWith({ deleteUser }, "u1")).delete("/api/account");
+    expect(r.status).toBe(403);
+    expect(deleteUser).not.toHaveBeenCalled();
   });
 });

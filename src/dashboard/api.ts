@@ -1,4 +1,4 @@
-import express, { Router, type Request, type Response, type NextFunction } from "express";
+import express, { Router, type Request, type Response } from "express";
 import type { TokenStore } from "../auth/token-store.js";
 
 export interface DashboardApiDeps {
