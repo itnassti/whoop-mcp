@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import express, { Router, type Request, type Response } from "express";
 import cookieSession from "cookie-session";
 import type { OAuthServerProvider } from "@modelcontextprotocol/sdk/server/auth/provider.js";
@@ -74,7 +75,16 @@ export function createDashboardRouter(deps: DashboardDeps): Router {
   router.get("/connect", async (req: Request, res: Response) => {
     try {
       const redirectUri = connectedRedirectUri(req);
-      await deps.provider.authorize(dashboardClient(redirectUri), { redirectUri, codeChallenge: "unused" }, res);
+      // CSRF/login-fixation guard: bind this login attempt to the initiating browser session.
+      // The state travels through WHOOP and back to /connected, where it must match what we
+      // stored here. An attacker's captured code carries a state the victim's session lacks.
+      const oauthState = randomBytes(32).toString("base64url");
+      if (req.session) req.session.oauthState = oauthState;
+      await deps.provider.authorize(
+        dashboardClient(redirectUri),
+        { redirectUri, state: oauthState, codeChallenge: "unused" },
+        res,
+      );
     } catch {
       res.status(502).send("Could not start the WHOOP connection, please try again.");
     }
@@ -89,6 +99,16 @@ export function createDashboardRouter(deps: DashboardDeps): Router {
       res.status(400).send("Missing authorization code.");
       return;
     }
+    // CSRF/login-fixation guard: the returned state must match the one bound to this browser
+    // session at /connect. Reject before touching the code so a forged callback can't set a session.
+    const state = typeof req.query.state === "string" ? req.query.state : undefined;
+    const expectedState = req.session?.oauthState as string | undefined;
+    if (!state || !expectedState || state !== expectedState) {
+      if (req.session) req.session.oauthState = undefined;
+      res.status(403).send("Invalid or missing state.");
+      return;
+    }
+    if (req.session) req.session.oauthState = undefined; // one-time use
     try {
       const redirectUri = connectedRedirectUri(req);
       const tokens = await deps.provider.exchangeAuthorizationCode(dashboardClient(redirectUri), code);

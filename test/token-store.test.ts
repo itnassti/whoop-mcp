@@ -115,6 +115,42 @@ describe("TokenStore.forceRefreshAccessToken (fake db)", () => {
   });
 });
 
+describe("TokenStore.upsertUserAndTokens (fake db, transactional)", () => {
+  it("performs both the user and token writes inside a single transaction", async () => {
+    const insertedTables: string[] = [];
+    const makeChain = (): any => {
+      const chain: any = {
+        values: () => chain,
+        onConflictDoUpdate: () => chain,
+        returning: async () => [{ id: "user-xyz" }],
+        then: (resolve: (v: unknown) => unknown) => Promise.resolve(undefined).then(resolve),
+      };
+      return chain;
+    };
+    const tx = {
+      insert: (table: unknown) => {
+        insertedTables.push(
+          table === schema.users ? "users" : table === schema.whoopTokens ? "whoopTokens" : "other",
+        );
+        return makeChain();
+      },
+    };
+    const transaction = vi.fn(async (cb: (t: unknown) => unknown) => cb(tx));
+    const store = new TokenStore({ transaction } as any, key, vi.fn());
+
+    const userId = await store.upsertUserAndTokens("whoop-1", "a@b.com", {
+      accessToken: "a",
+      refreshToken: "r",
+      expiresAt: new Date(Date.now() + 3600_000),
+      scopes: ["offline"],
+    });
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(insertedTables).toEqual(["users", "whoopTokens"]);
+    expect(userId).toBe("user-xyz");
+  });
+});
+
 const url = process.env.DATABASE_URL;
 
 describe.skipIf(!url)("TokenStore integration (real db)", () => {

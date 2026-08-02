@@ -14,24 +14,29 @@ export class TokenStore {
   constructor(private db: Db, private keyHex: string, private refresh: RefreshFn) {}
 
   async upsertUserAndTokens(whoopUserId: string, email: string | null, t: WhoopTokenSet): Promise<string> {
-    const [user] = await this.db.insert(schema.users)
-      .values({ whoopUserId, email })
-      .onConflictDoUpdate({ target: schema.users.whoopUserId, set: { email } })
-      .returning();
-    await this.db.insert(schema.whoopTokens).values({
-      userId: user.id,
-      accessTokenEnc: encrypt(t.accessToken, this.keyHex),
-      refreshTokenEnc: encrypt(t.refreshToken, this.keyHex),
-      accessTokenExpiresAt: t.expiresAt, scopes: t.scopes,
-    }).onConflictDoUpdate({
-      target: schema.whoopTokens.userId,
-      set: {
+    // Atomic: the user row and its token row must appear together. Without the transaction,
+    // a crash between the two writes could leave a user with no token row (permanent
+    // "WHOOP not connected"); the transaction rolls both back on any failure.
+    return this.db.transaction(async (tx) => {
+      const [user] = await tx.insert(schema.users)
+        .values({ whoopUserId, email })
+        .onConflictDoUpdate({ target: schema.users.whoopUserId, set: { email } })
+        .returning();
+      await tx.insert(schema.whoopTokens).values({
+        userId: user.id,
         accessTokenEnc: encrypt(t.accessToken, this.keyHex),
         refreshTokenEnc: encrypt(t.refreshToken, this.keyHex),
-        accessTokenExpiresAt: t.expiresAt, scopes: t.scopes, updatedAt: new Date(),
-      },
+        accessTokenExpiresAt: t.expiresAt, scopes: t.scopes,
+      }).onConflictDoUpdate({
+        target: schema.whoopTokens.userId,
+        set: {
+          accessTokenEnc: encrypt(t.accessToken, this.keyHex),
+          refreshTokenEnc: encrypt(t.refreshToken, this.keyHex),
+          accessTokenExpiresAt: t.expiresAt, scopes: t.scopes, updatedAt: new Date(),
+        },
+      });
+      return user.id;
     });
-    return user.id;
   }
 
   async getValidAccessToken(userId: string): Promise<string> {

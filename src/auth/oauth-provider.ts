@@ -135,6 +135,8 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
   async exchangeAuthorizationCode(
     client: OAuthClientInformationFull,
     authorizationCode: string,
+    _codeVerifier?: string,
+    redirectUri?: string,
   ): Promise<OAuthTokens> {
     const codeHash = sha256hex(authorizationCode);
     const [row] = await this.deps.db
@@ -147,6 +149,12 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       .delete(schema.oauthAuthCodes)
       .where(eq(schema.oauthAuthCodes.codeHash, codeHash));
     if (row.clientId !== client.client_id) throw new InvalidGrantError("authorization code was issued to a different client");
+    // RFC 6749 §4.1.3: when the token request presents a redirect_uri, it MUST match the one
+    // bound to the code at authorization time. The SDK's dashboard path omits it (server-internal,
+    // same-origin), so we only enforce when a redirect_uri is actually supplied.
+    if (redirectUri !== undefined && redirectUri !== row.redirectUri) {
+      throw new InvalidGrantError("redirect_uri does not match the authorization request");
+    }
     if (row.expiresAt.getTime() < Date.now()) throw new InvalidGrantError("authorization code expired");
 
     const accessToken = await this.deps.tokenStore.issueMcpToken(row.userId, "oauth");
