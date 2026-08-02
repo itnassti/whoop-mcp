@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
@@ -24,17 +25,22 @@ describe("dashboard", () => {
   });
 
   it("serves the SPA index.html at the dashboard root", async () => {
-    const dist = path.resolve("web/dist");
-    fs.mkdirSync(dist, { recursive: true });
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), "whoop-dist-"));
     fs.writeFileSync(path.join(dist, "index.html"), "<!doctype html><title>WHOOP</title><div id=root></div>");
     const a = express();
-    a.use("/dashboard", createDashboardRouter({ provider: {} as any, tokenStore: {} as any, sessionSecret: "x".repeat(20) }));
+    a.use(
+      "/dashboard",
+      createDashboardRouter({ provider: {} as any, tokenStore: {} as any, sessionSecret: "x".repeat(20), webDistDir: dist }),
+    );
     const r = await request(a).get("/dashboard/");
     expect(r.status).toBe(200);
     expect(r.text).toMatch(/id=root/);
+    fs.rmSync(dist, { recursive: true, force: true });
   });
 
   it("does not let the SPA fallback swallow /dashboard/api routes", async () => {
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), "whoop-dist-"));
+    fs.writeFileSync(path.join(dist, "index.html"), "<!doctype html><title>WHOOP</title><div id=root></div>");
     const a = express();
     a.use(
       "/dashboard",
@@ -42,11 +48,13 @@ describe("dashboard", () => {
         provider: {} as any,
         tokenStore: { issueMcpToken: vi.fn(), revokeMcpToken: vi.fn(), deleteUser: vi.fn() } as any,
         sessionSecret: "x".repeat(20),
+        webDistDir: dist,
       }),
     );
     const r = await request(a).get("/dashboard/api/session");
     expect(r.status).toBe(200);
     expect(r.headers["content-type"]).toMatch(/json/);
     expect(r.body).toEqual({ connected: false });
+    fs.rmSync(dist, { recursive: true, force: true });
   });
 });
