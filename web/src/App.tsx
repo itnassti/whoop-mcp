@@ -3,6 +3,7 @@ import { Loader2Icon } from "lucide-react";
 import { api } from "@/lib/api";
 import { ConnectCard } from "@/components/ConnectCard";
 import { TokensCard } from "@/components/TokensCard";
+import { ConnectionGuide } from "@/components/ConnectionGuide";
 import { DangerZone } from "@/components/DangerZone";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -32,6 +33,7 @@ function App() {
         ) : connected ? (
           <>
             <TokensCard onUnauthorized={disconnect} />
+            <ConnectionGuide />
             <DangerZone onDeleted={disconnect} />
           </>
         ) : (
