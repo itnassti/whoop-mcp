@@ -30,9 +30,8 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { api, type TokenSummary } from "@/lib/api";
+import { api, isUnauthorized, type TokenSummary } from "@/lib/api";
 
-const isUnauthorized = (err: unknown) => err instanceof Error && err.message === "not connected";
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong");
 
 function formatDate(iso: string): string {

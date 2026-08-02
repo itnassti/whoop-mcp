@@ -13,7 +13,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { api } from "@/lib/api";
+import { api, isUnauthorized } from "@/lib/api";
 
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong");
 
@@ -30,7 +30,7 @@ export function DangerZone({ onDeleted }: { onDeleted: () => void }) {
       onDeleted();
     } catch (err) {
       // A 401 here means the session is already gone — treat it the same as success.
-      if (err instanceof Error && err.message === "not connected") {
+      if (isUnauthorized(err)) {
         setOpen(false);
         onDeleted();
         return;

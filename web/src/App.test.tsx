@@ -18,3 +18,12 @@ it("shows the tokens card when connected", async () => {
   render(<App />);
   await waitFor(() => expect(screen.getByText(/personal access tokens/i)).toBeInTheDocument());
 });
+
+it("returns to the Connect state when a session-authenticated call gets a 401", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
+    String(url).endsWith("/session")
+      ? new Response(JSON.stringify({ connected: true }), { status: 200 })
+      : new Response(JSON.stringify({ error: "not connected" }), { status: 401 }));
+  render(<App />);
+  await waitFor(() => expect(screen.getByText(/connect whoop/i)).toBeInTheDocument());
+});
