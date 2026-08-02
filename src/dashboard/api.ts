@@ -39,6 +39,17 @@ export function createDashboardApiRouter(deps: DashboardApiDeps): Router {
     res.json({ token });
   });
 
+  router.patch("/tokens/:id", async (req, res) => {
+    const id = requireSession(req, res); if (!id) return;
+    if (!requireXhr(req, res)) return;
+    const raw = req.body?.label;
+    const trimmed = typeof raw === "string" ? raw.trim() : "";
+    if (trimmed.length > 100) { res.status(400).json({ error: "label too long" }); return; }
+    const label = trimmed ? trimmed : null;
+    await deps.tokenStore.updateMcpTokenLabel(id, req.params.id, label);
+    res.status(204).end();
+  });
+
   router.delete("/tokens/:id", async (req, res) => {
     const id = requireSession(req, res); if (!id) return;
     if (!requireXhr(req, res)) return;

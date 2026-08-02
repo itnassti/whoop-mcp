@@ -117,6 +117,14 @@ export class TokenStore {
       ));
   }
 
+  async updateMcpTokenLabel(userId: string, tokenHash: string, label: string | null): Promise<void> {
+    await this.db.update(schema.mcpTokens).set({ label })
+      .where(and(
+        eq(schema.mcpTokens.tokenHash, tokenHash),
+        eq(schema.mcpTokens.userId, userId),
+      ));
+  }
+
   async deleteUser(userId: string): Promise<void> {
     await this.db.delete(schema.users).where(eq(schema.users.id, userId)); // cascades
   }

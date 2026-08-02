@@ -182,6 +182,24 @@ describe("TokenStore.listMcpTokens / revokeMcpTokenById (fake db)", () => {
     expect(captured.patch.revokedAt).toBeInstanceOf(Date);
     expect(captured.cond).toBeDefined();
   });
+
+  it("updateMcpTokenLabel issues a scoped update (userId + tokenHash) setting label", async () => {
+    let captured: any = null;
+    const db = {
+      update: () => ({
+        set: (patch: any) => ({
+          where: (cond: any) => {
+            captured = { patch, cond };
+            return Promise.resolve();
+          },
+        }),
+      }),
+    };
+    const store = new TokenStore(db as any, key, vi.fn());
+    await store.updateMcpTokenLabel("u1", "h1", "renamed");
+    expect(captured.patch).toHaveProperty("label", "renamed");
+    expect(captured.cond).toBeDefined();
+  });
 });
 
 const url = process.env.DATABASE_URL;
@@ -264,6 +282,45 @@ describe.skipIf(!url)("TokenStore integration (real db)", () => {
     // Positive control: user B revoking their own token does work.
     await store.revokeMcpTokenById(userBId, tokenBHash);
     expect(await store.resolveMcpToken(rawB)).toBeNull();
+
+    await store.deleteUser(userAId);
+    await store.deleteUser(userBId);
+  });
+
+  it("updateMcpTokenLabel cannot rename another user's token (cross-user isolation)", async () => {
+    const db = getDb(url!);
+    const store = new TokenStore(db, key, vi.fn());
+    const whoopUserIdA = "whoop_" + Math.random().toString(36).slice(2);
+    const whoopUserIdB = "whoop_" + Math.random().toString(36).slice(2);
+    const userAId = await store.upsertUserAndTokens(whoopUserIdA, null, {
+      accessToken: "access-a",
+      refreshToken: "refresh-a",
+      expiresAt: new Date(Date.now() + 3600_000),
+      scopes: ["offline"],
+    });
+    const userBId = await store.upsertUserAndTokens(whoopUserIdB, null, {
+      accessToken: "access-b",
+      refreshToken: "refresh-b",
+      expiresAt: new Date(Date.now() + 3600_000),
+      scopes: ["offline"],
+    });
+
+    await store.issueMcpToken(userAId, "pat", "a's token");
+    await store.issueMcpToken(userBId, "pat", "b's token");
+
+    const tokensB = await store.listMcpTokens(userBId);
+    expect(tokensB).toHaveLength(1);
+    const tokenBId = tokensB[0].id;
+
+    // User A attempts to rename user B's token by id: must be a no-op.
+    await store.updateMcpTokenLabel(userAId, tokenBId, "hacked");
+    const tokensBAfterAttack = await store.listMcpTokens(userBId);
+    expect(tokensBAfterAttack[0].label).toBe("b's token");
+
+    // Positive control: user B renaming their own token does work.
+    await store.updateMcpTokenLabel(userBId, tokenBId, "renamed");
+    const tokensBAfterRename = await store.listMcpTokens(userBId);
+    expect(tokensBAfterRename[0].label).toBe("renamed");
 
     await store.deleteUser(userAId);
     await store.deleteUser(userBId);
