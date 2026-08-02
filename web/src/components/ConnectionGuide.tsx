@@ -26,7 +26,7 @@ export function ConnectionGuide({ token }: { token?: string }) {
           <code className="flex-1 overflow-x-auto rounded-lg border border-border bg-muted px-2.5 py-1.5 text-sm select-text">
             {mcpUrl}
           </code>
-          <CopyButton text={mcpUrl} />
+          <CopyButton text={mcpUrl} label="Copy URL" />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -36,7 +36,7 @@ export function ConnectionGuide({ token }: { token?: string }) {
             needed.
           </p>
           <div>
-            <CopyButton text={mcpUrl} />
+            <CopyButton text={mcpUrl} label="Copy URL" />
           </div>
         </div>
 
@@ -46,7 +46,7 @@ export function ConnectionGuide({ token }: { token?: string }) {
             <code className="font-mono select-text">{claudeCodeCommand}</code>
           </pre>
           <div>
-            <CopyButton text={claudeCodeCommand} />
+            <CopyButton text={claudeCodeCommand} label="Copy command" />
           </div>
         </div>
 
@@ -56,7 +56,7 @@ export function ConnectionGuide({ token }: { token?: string }) {
             <code className="font-mono select-text whitespace-pre">{mcpJson}</code>
           </pre>
           <div>
-            <CopyButton text={mcpJson} />
+            <CopyButton text={mcpJson} label="Copy config" />
           </div>
         </div>
 

@@ -8,7 +8,7 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
       await navigator.clipboard.writeText(text);
       toast.success("Copied");
     } catch {
-      // ignore
+      toast.error("Could not copy to clipboard");
     }
   }
 
