@@ -3,34 +3,7 @@ import request from "supertest";
 import express from "express";
 import { createDashboardRouter } from "../src/dashboard/routes.js";
 
-function app() {
-  const a = express();
-  a.use(
-    createDashboardRouter({
-      provider: {} as any,
-      tokenStore: {
-        issueMcpToken: vi.fn(),
-        revokeMcpToken: vi.fn(),
-        deleteUser: vi.fn(),
-      } as any,
-      sessionSecret: "test-session-secret-1234567890",
-    }),
-  );
-  return a;
-}
-
 describe("dashboard", () => {
-  it("landing page invites WHOOP connection", async () => {
-    const r = await request(app()).get("/");
-    expect(r.status).toBe(200);
-    expect(r.text).toMatch(/Connect WHOOP/i);
-  });
-
-  it("rejects PAT creation without session", async () => {
-    const r = await request(app()).post("/pat");
-    expect(r.status).toBe(401);
-  });
-
   it("rejects /connected when the state does not match the session (CSRF guard)", async () => {
     const exchangeAuthorizationCode = vi.fn();
     const a = express();

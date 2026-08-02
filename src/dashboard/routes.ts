@@ -4,6 +4,7 @@ import cookieSession from "cookie-session";
 import type { OAuthServerProvider } from "@modelcontextprotocol/sdk/server/auth/provider.js";
 import type { OAuthClientInformationFull } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { TokenStore } from "../auth/token-store.js";
+import { createDashboardApiRouter } from "./api.js";
 
 export interface DashboardDeps {
   provider: OAuthServerProvider;
@@ -15,10 +16,6 @@ export interface DashboardDeps {
 // registered MCP clients (whose client_id values are CSPRNG-random) — this id is never
 // registered in oauthClients, so it can never collide with one.
 const DASHBOARD_CLIENT_ID = "whoop-mcp-dashboard";
-
-function page(title: string, body: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${body}</body></html>`;
-}
 
 function connectedRedirectUri(req: Request): string {
   return `${req.protocol}://${req.get("host")}${req.baseUrl}/connected`;
@@ -40,34 +37,6 @@ export function createDashboardRouter(deps: DashboardDeps): Router {
     }),
   );
   router.use(express.urlencoded({ extended: false }));
-
-  router.get("/", (req: Request, res: Response) => {
-    const userId = req.session?.userId as string | undefined;
-    if (!userId) {
-      res.status(200).send(
-        page(
-          "WHOOP Dashboard",
-          `<h1>WHOOP Dashboard</h1>
-           <p>Connect your WHOOP account to get started.</p>
-           <a href="${req.baseUrl}/connect"><button type="button">Connect WHOOP</button></a>`,
-        ),
-      );
-      return;
-    }
-    res.status(200).send(
-      page(
-        "WHOOP Dashboard",
-        `<h1>WHOOP Dashboard</h1>
-         <p>Your WHOOP account is connected.</p>
-         <form method="POST" action="${req.baseUrl}/pat">
-           <button type="submit">Create personal access token</button>
-         </form>
-         <form method="POST" action="${req.baseUrl}/delete">
-           <button type="submit">Delete my account</button>
-         </form>`,
-      ),
-    );
-  });
 
   // Starts the WHOOP OAuth flow for the dashboard by reusing the provider's own
   // authorize()/pending-authorization mechanism (Task 7), with a dashboard-specific
@@ -125,53 +94,7 @@ export function createDashboardRouter(deps: DashboardDeps): Router {
     }
   });
 
-  router.post("/pat", async (req: Request, res: Response) => {
-    const userId = req.session?.userId as string | undefined;
-    if (!userId) {
-      res.status(401).send("Not connected.");
-      return;
-    }
-    const token = await deps.tokenStore.issueMcpToken(userId, "pat");
-    res.status(200).send(
-      page(
-        "Personal access token",
-        `<h1>Personal access token created</h1>
-         <p>Copy this token now — it will not be shown again.</p>
-         <code>${token}</code>
-         <form method="POST" action="${req.baseUrl}/pat/revoke">
-           <input type="hidden" name="token" value="${token}" />
-           <button type="submit">Revoke this token</button>
-         </form>
-         <p><a href="${req.baseUrl}/">Back to dashboard</a></p>`,
-      ),
-    );
-  });
-
-  router.post("/pat/revoke", async (req: Request, res: Response) => {
-    const userId = req.session?.userId as string | undefined;
-    if (!userId) {
-      res.status(401).send("Not connected.");
-      return;
-    }
-    const token = typeof req.body?.token === "string" ? req.body.token : undefined;
-    if (!token) {
-      res.status(400).send("Missing token.");
-      return;
-    }
-    await deps.tokenStore.revokeMcpToken(token);
-    res.status(200).send(page("Token revoked", `<h1>Token revoked</h1><p><a href="${req.baseUrl}/">Back to dashboard</a></p>`));
-  });
-
-  router.post("/delete", async (req: Request, res: Response) => {
-    const userId = req.session?.userId as string | undefined;
-    if (!userId) {
-      res.status(401).send("Not connected.");
-      return;
-    }
-    await deps.tokenStore.deleteUser(userId);
-    req.session = null;
-    res.status(200).send(page("Account deleted", `<h1>Account deleted</h1><p>Your WHOOP connection and data have been removed.</p>`));
-  });
+  router.use("/api", createDashboardApiRouter({ tokenStore: deps.tokenStore }));
 
   return router;
 }
