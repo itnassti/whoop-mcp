@@ -21,4 +21,20 @@ describe("loadConfig", () => {
     const { WHOOP_CLIENT_ID, ...rest } = base;
     expect(() => loadConfig(rest as any)).toThrow();
   });
+
+  it("derives PUBLIC_BASE_URL from RAILWAY_PUBLIC_DOMAIN when unset", () => {
+    const { PUBLIC_BASE_URL, ...rest } = base;
+    const c = loadConfig({ ...rest, RAILWAY_PUBLIC_DOMAIN: "app.up.railway.app" } as any);
+    expect(c.publicBaseUrl).toBe("https://app.up.railway.app");
+  });
+
+  it("prefers explicit PUBLIC_BASE_URL over RAILWAY_PUBLIC_DOMAIN", () => {
+    const c = loadConfig({ ...base, RAILWAY_PUBLIC_DOMAIN: "other.up.railway.app" } as any);
+    expect(c.publicBaseUrl).toBe("https://example.com");
+  });
+
+  it("throws when neither PUBLIC_BASE_URL nor RAILWAY_PUBLIC_DOMAIN is set", () => {
+    const { PUBLIC_BASE_URL, ...rest } = base;
+    expect(() => loadConfig(rest as any)).toThrow();
+  });
 });

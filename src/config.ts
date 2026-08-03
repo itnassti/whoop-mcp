@@ -18,7 +18,10 @@ const Schema = z.object({
 });
 
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
-  const p = Schema.parse(env);
+  const publicBaseUrl =
+    env.PUBLIC_BASE_URL ??
+    (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : undefined);
+  const p = Schema.parse({ ...env, PUBLIC_BASE_URL: publicBaseUrl });
   return {
     databaseUrl: p.DATABASE_URL, encryptionKey: p.ENCRYPTION_KEY,
     whoopClientId: p.WHOOP_CLIENT_ID, whoopClientSecret: p.WHOOP_CLIENT_SECRET,
