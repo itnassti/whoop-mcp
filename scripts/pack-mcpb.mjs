@@ -21,10 +21,12 @@ const rootPkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))
 rmSync(distDest, { recursive: true, force: true });
 rmSync(join(stageDir, "node_modules"), { recursive: true, force: true });
 
-// Copy only what dist/local/index.js imports: local/, mcp/, whoop/.
+// Copy only what dist/local/index.js imports (transitively): local/, mcp/, whoop/,
+// plus dist/crypto.js (imported by local/token-store.js as "../crypto.js").
 for (const sub of ["local", "mcp", "whoop"]) {
   cpSync(join(distSrc, sub), join(distDest, sub), { recursive: true });
 }
+cpSync(join(distSrc, "crypto.js"), join(distDest, "crypto.js"));
 
 // Minimal package.json so `npm install` only pulls the runtime deps the local
 // server actually needs, not the full multi-user-server dependency list.
