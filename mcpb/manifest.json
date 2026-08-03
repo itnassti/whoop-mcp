@@ -1,0 +1,54 @@
+{
+  "manifest_version": "0.4",
+  "name": "whoop-mcp-local",
+  "display_name": "WHOOP (local)",
+  "version": "0.1.0",
+  "description": "Access your own WHOOP data (recovery, sleep, workouts, cycles, profile) locally in Claude Desktop.",
+  "author": { "name": "Christian Axtmann" },
+  "license": "MIT",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/local/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/local/index.js"],
+      "env": {
+        "WHOOP_CLIENT_ID": "${user_config.whoop_client_id}",
+        "WHOOP_CLIENT_SECRET": "${user_config.whoop_client_secret}",
+        "WHOOP_REDIRECT_URI": "${user_config.whoop_redirect_uri}"
+      }
+    }
+  },
+  "user_config": {
+    "whoop_client_id": {
+      "type": "string",
+      "title": "WHOOP Client ID",
+      "description": "The Client ID from your WHOOP developer app.",
+      "required": true
+    },
+    "whoop_client_secret": {
+      "type": "string",
+      "title": "WHOOP Client Secret",
+      "description": "The Client Secret from your WHOOP developer app. Stored securely in the OS keychain.",
+      "sensitive": true,
+      "required": true
+    },
+    "whoop_redirect_uri": {
+      "type": "string",
+      "title": "Redirect URI",
+      "description": "Leave blank to use the default callback page.",
+      "required": false
+    }
+  },
+  "tools": [
+    { "name": "whoop_login" },
+    { "name": "whoop_complete_login" },
+    { "name": "get_recovery" },
+    { "name": "get_sleep" },
+    { "name": "get_workouts" },
+    { "name": "get_cycles" },
+    { "name": "get_profile" },
+    { "name": "get_body_measurement" },
+    { "name": "get_daily_summary" }
+  ]
+}
