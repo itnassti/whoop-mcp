@@ -168,6 +168,14 @@ stored securely in your OS keychain.
    https://caxtmann.github.io/whoop-mcp/callback/
    ```
 
+   This callback page is a tiny static page — it only displays the `code` and
+   `state` for you to copy back, holds no secret, and stores no data. It is
+   shared by all users of this extension. If you'd rather not depend on it, host
+   your own copy of [`callback/index.html`](callback/index.html) (e.g. on your
+   own GitHub Pages), use that URL as the redirect URI here, and set the optional
+   **Redirect URI** field in the install dialog to the same URL — it overrides
+   the default.
+
 3. Request the scopes:
 
    ```
