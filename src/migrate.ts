@@ -1,20 +1,15 @@
-import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import pg from "pg";
+import { getDb } from "./db/client.js";
 
-// Runtime migrations via drizzle-orm's migrator (a production dependency), NOT the
-// drizzle-kit CLI. The CLI renders a TTY spinner and can keep its DB connection open
-// in a non-interactive container, so `drizzle-kit migrate && npm start` could hang
-// after applying migrations and never reach the server start. This script applies
-// pending migrations, closes the pool, and exits deterministically.
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-try {
-  await migrate(drizzle(pool), { migrationsFolder: "drizzle" });
+// Runtime migrations via drizzle-orm's migrator (a production dependency), run
+// IN-PROCESS from the server entrypoint before it starts listening — NOT as a
+// separate `drizzle-kit migrate && npm start` step. The drizzle-kit CLI renders a
+// TTY spinner that can hang in a non-interactive container, and a standalone
+// migrate process that closes its own pool can hang on pool.end(); either breaks
+// the `&&` chain so the server never starts. Reusing the shared getDb() pool and
+// leaving it open (the server goes on to use it) avoids both failure modes.
+export async function runMigrations(databaseUrl: string): Promise<void> {
+  const db = getDb(databaseUrl);
+  await migrate(db, { migrationsFolder: "drizzle" });
   console.log("migrations applied");
-  await pool.end();
-  process.exit(0);
-} catch (e) {
-  console.error("migration failed:", e);
-  await pool.end().catch(() => {});
-  process.exit(1);
 }
