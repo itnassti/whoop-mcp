@@ -18,9 +18,11 @@ There are two ways to get WHOOP data into your AI client:
 - **A. Self-host as a remote connector** (this README) — run your own instance
   (Railway 1-click, Docker, Fly.io, Render, ...) and connect any MCP client to
   it over HTTP, either via OAuth or a personal access token.
-- **B. Local Claude Desktop extension** — a packaged extension that runs
-  locally without hosting anything yourself. This is coming separately; see
-  "Way B" once it's available.
+- **B. Local Claude Desktop extension** (see **Local Claude Desktop
+  extension** below) — a free, packaged `.mcpb` extension that runs entirely
+  on your machine. No hosting, no database: your WHOOP tokens are encrypted
+  and stored locally under your OS config directory. Claude Desktop only
+  (not the browser).
 
 ## 1-Click deploy on Railway
 
@@ -130,6 +132,62 @@ go through the same "Connect WHOOP" OAuth flow.
 
 Revoke a token at any time from the dashboard, or delete your account
 entirely (removes your WHOOP connection and all issued tokens).
+
+## Local Claude Desktop extension (Way B)
+
+A free, local alternative to self-hosting: a `.mcpb` extension that runs as a
+subprocess inside Claude Desktop. There's no server to host and no database —
+your WHOOP tokens are encrypted and stored on disk under your OS config
+directory. Claude Desktop only; this doesn't work in the browser (Claude.ai
+or ChatGPT), since those need a remote connector.
+
+### 1. Get the extension
+
+Either build it yourself:
+
+```bash
+npm run bundle:local
+```
+
+which produces `whoop-mcp.mcpb` in the repo root, or download the latest
+`whoop-mcp.mcpb` from the project's releases.
+
+### 2. Install it
+
+Double-click `whoop-mcp.mcpb` to install it into Claude Desktop. The install
+dialog asks for your **WHOOP Client ID** and **WHOOP Client Secret** — enter
+the credentials from your own WHOOP developer app (see below). The secret is
+stored securely in your OS keychain.
+
+### 3. Create your own WHOOP app
+
+1. Register a developer application at the [WHOOP Developer Portal](https://developer.whoop.com/).
+2. Set the app's **redirect URI** to exactly:
+
+   ```
+   https://caxtmann.github.io/whoop-mcp/callback/
+   ```
+
+3. Request the scopes:
+
+   ```
+   read:recovery read:sleep read:workout read:cycles read:profile read:body_measurement offline
+   ```
+
+4. Copy the client ID and secret — enter these in the install dialog above.
+
+### 4. Log in
+
+1. Run the `whoop_login` tool.
+2. Open the URL it returns and approve access on WHOOP.
+3. WHOOP redirects to the callback page, which displays a `code` and
+   `state` — copy both.
+4. Run the `whoop_complete_login` tool with that `code` and `state`.
+
+### 5. Use it
+
+Once logged in, call the data tools directly, e.g. `get_daily_summary`,
+`get_recovery`, `get_sleep`.
 
 ## Running locally (development)
 
