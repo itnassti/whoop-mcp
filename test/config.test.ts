@@ -28,6 +28,11 @@ describe("loadConfig", () => {
     expect(c.publicBaseUrl).toBe("https://app.up.railway.app");
   });
 
+  it("treats an empty PUBLIC_BASE_URL as unset and derives from RAILWAY_PUBLIC_DOMAIN", () => {
+    const c = loadConfig({ ...base, PUBLIC_BASE_URL: "", RAILWAY_PUBLIC_DOMAIN: "app.up.railway.app" } as any);
+    expect(c.publicBaseUrl).toBe("https://app.up.railway.app");
+  });
+
   it("prefers explicit PUBLIC_BASE_URL over RAILWAY_PUBLIC_DOMAIN", () => {
     const c = loadConfig({ ...base, RAILWAY_PUBLIC_DOMAIN: "other.up.railway.app" } as any);
     expect(c.publicBaseUrl).toBe("https://example.com");

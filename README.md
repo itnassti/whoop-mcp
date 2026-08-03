@@ -132,6 +132,24 @@ go through the same "Connect WHOOP" OAuth flow.
 Revoke a token at any time from the dashboard, or delete your account
 entirely (removes your WHOOP connection and all issued tokens).
 
+### Sharing your instance with friends (multi-user)
+
+The server is multi-user by design: anyone you point at your deployment
+connects their **own** WHOOP account and only ever sees their own data —
+exactly how the project author runs it for a small circle. To invite a friend,
+just share your `https://<your-domain>/mcp` connector URL (or the dashboard
+link); they go through their own "Connect WHOOP" flow. There's no per-user
+setup on your side.
+
+Two things to keep in mind before inviting people:
+
+- **WHOOP app user limit:** a WHOOP developer app in development mode is capped
+  at a small number of users (around 10). Fine for friends; a larger audience
+  requires WHOOP's production review.
+- **Data responsibility:** once others connect, their (encrypted) WHOOP tokens
+  live in *your* database, and you become responsible for that data (e.g. GDPR
+  if you're in the EU). Only invite people who are comfortable with that.
+
 ## Local Claude Desktop extension (Way B)
 
 A free, local alternative to self-hosting: a `.mcpb` extension that runs as a
@@ -153,10 +171,21 @@ which produces `whoop-mcp.mcpb` in the repo root, or download the latest
 
 ### 2. Install it
 
-Double-click `whoop-mcp.mcpb` to install it into Claude Desktop. The install
-dialog asks for your **WHOOP Client ID** and **WHOOP Client Secret** — enter
-the credentials from your own WHOOP developer app (see below). The secret is
-stored securely in your OS keychain.
+Install the `.mcpb` into Claude Desktop with any of these — if a double-click
+does nothing (macOS may not associate the `.mcpb` file type), use the
+**Advanced settings** route, which always works:
+
+- **Advanced settings (most reliable):** in Claude Desktop go to **Settings →
+  Extensions → Advanced settings → Extension Developer → Install Extension…**
+  and pick your `whoop-mcp.mcpb`.
+- **Drag & drop:** drag `whoop-mcp.mcpb` onto the Claude Desktop **Settings**
+  window.
+- **Double-click:** open `whoop-mcp.mcpb` from Finder (works on most, but not
+  all, installs).
+
+The install dialog asks for your **WHOOP Client ID** and **WHOOP Client
+Secret** — enter the credentials from your own WHOOP developer app (see below).
+The secret is stored securely in your OS keychain.
 
 ### 3. Create your own WHOOP app
 

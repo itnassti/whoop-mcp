@@ -18,8 +18,11 @@ const Schema = z.object({
 });
 
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
+  // `||` (not `??`) so an empty-string PUBLIC_BASE_URL is treated as unset and
+  // still falls back to RAILWAY_PUBLIC_DOMAIN — otherwise a blank env var would
+  // skip the fallback and fail URL validation, crashing startup.
   const publicBaseUrl =
-    env.PUBLIC_BASE_URL ??
+    env.PUBLIC_BASE_URL ||
     (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : undefined);
   const p = Schema.parse({ ...env, PUBLIC_BASE_URL: publicBaseUrl });
   return {
