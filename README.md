@@ -119,7 +119,7 @@ go through the same "Connect WHOOP" OAuth flow.
 {
   "mcpServers": {
     "whoop": {
-      "url": "https://your-app.up.railway.app/mcp",
+      "url": "https://<your-domain>/mcp",
       "headers": {
         "Authorization": "Bearer <PAT>"
       }
@@ -130,3 +130,16 @@ go through the same "Connect WHOOP" OAuth flow.
 
 Revoke a token at any time from the dashboard, or delete your account
 entirely (removes your WHOOP connection and all issued tokens).
+
+## Running locally (development)
+
+1. Set up a local Postgres database and configure `DATABASE_URL`.
+2. Run the setup commands:
+
+```bash
+npm install
+npm run db:migrate
+npm run dev
+```
+
+The server will start at `http://localhost:8080`. Check health with `GET /healthz`, which returns `{"ok":true}` once running.
