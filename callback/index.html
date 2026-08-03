@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WHOOP MCP — connect</title>
+<style>body{font-family:system-ui,sans-serif;max-width:36rem;margin:3rem auto;padding:0 1rem}
+code{background:#f2f2f2;padding:.15rem .35rem;border-radius:.25rem}
+.box{background:#f7f7f7;border:1px solid #ddd;border-radius:.5rem;padding:1rem;margin:1rem 0;word-break:break-all}
+button{padding:.4rem .8rem}</style></head>
+<body>
+<h1>WHOOP connected — almost done</h1>
+<p>Copy these two values back into your AI assistant's <code>whoop_complete_login</code> tool:</p>
+<div class="box"><strong>code</strong><br><span id="code"></span> <button onclick="copy('code')">Copy</button></div>
+<div class="box"><strong>state</strong><br><span id="state"></span> <button onclick="copy('state')">Copy</button></div>
+<p id="err" style="color:#b00"></p>
+<script>
+  const q = new URLSearchParams(location.search);
+  const code = q.get("code"), state = q.get("state"), error = q.get("error");
+  if (error) { document.getElementById("err").textContent = "WHOOP returned an error: " + error; }
+  document.getElementById("code").textContent = code || "(missing)";
+  document.getElementById("state").textContent = state || "(missing)";
+  function copy(id){ navigator.clipboard.writeText(document.getElementById(id).textContent); }
+</script>
+</body></html>
