@@ -16,7 +16,7 @@ export function pkcePair(): { verifier: string; challenge: string } {
 export function startLogin(dir: string, opts: { clientId: string; redirectUri: string }): { authorizeUrl: string } {
   const { verifier, challenge } = pkcePair();
   const state = b64url(randomBytes(16));
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
   writeFileSync(pendingPath(dir), JSON.stringify({ verifier, state }), { mode: 0o600 });
   const authorizeUrl = buildAuthorizeUrl({
     clientId: opts.clientId, redirectUri: opts.redirectUri, state, codeChallenge: challenge,

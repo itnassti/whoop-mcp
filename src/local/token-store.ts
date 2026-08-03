@@ -20,7 +20,7 @@ export class LocalTokenStore {
   }
 
   save(t: WhoopTokenSet): void {
-    mkdirSync(this.dir, { recursive: true });
+    mkdirSync(this.dir, { recursive: true, mode: 0o700 });
     const plain = JSON.stringify({ ...t, expiresAt: t.expiresAt.toISOString() });
     writeFileSync(tokenFilePath(this.dir), encrypt(plain, this.keyHex), { mode: 0o600 });
   }
