@@ -5,17 +5,15 @@ import { makeToolHandlers, RANGE_SCHEMA } from "./tools.js";
 import type { TokenStore } from "../auth/token-store.js";
 import type { CredentialProvider } from "../whoop/credentials.js";
 
-export function buildMcpServer(deps: { tokenStore: TokenStore; credentials: CredentialProvider }): McpServer {
-  const server = new McpServer({ name: "whoop-mcp", version: "0.1.0" });
-  const clientFor = (userId: string) =>
-    new WhoopClient(
-      () => deps.tokenStore.getValidAccessToken(userId),
-      async () => deps.tokenStore.forceRefreshAccessToken(userId),
-    );
+export function registerWhoopTools(
+  server: McpServer,
+  clientFor: (userId: string) => WhoopClient,
+  userIdOf: (extra: any) => string,
+): void {
   const h = makeToolHandlers(clientFor);
-  const userIdOf = (extra: any): string => extra?.authInfo?.extra?.userId;
   const reg = (name: string, description: string, shape: any, fn: any) =>
-    server.registerTool(name, { description, inputSchema: shape }, async (args: any, extra: any) => fn(args, { userId: userIdOf(extra) }));
+    server.registerTool(name, { description, inputSchema: shape },
+      async (args: any, extra: any) => fn(args, { userId: userIdOf(extra) }));
 
   reg("get_recovery", "Get WHOOP recovery records (score, HRV, RHR, SpO2, skin temp).", RANGE_SCHEMA, h.get_recovery);
   reg("get_sleep", "Get WHOOP sleep records (stages, performance, respiratory rate).", RANGE_SCHEMA, h.get_sleep);
@@ -25,5 +23,15 @@ export function buildMcpServer(deps: { tokenStore: TokenStore; credentials: Cred
   reg("get_body_measurement", "Get body measurements (height, weight, max HR).", {}, h.get_body_measurement);
   reg("get_daily_summary", "Get combined recovery + sleep + strain for a single date (YYYY-MM-DD).",
     { date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD") }, h.get_daily_summary);
+}
+
+export function buildMcpServer(deps: { tokenStore: TokenStore; credentials: CredentialProvider }): McpServer {
+  const server = new McpServer({ name: "whoop-mcp", version: "0.1.0" });
+  const clientFor = (userId: string) =>
+    new WhoopClient(
+      () => deps.tokenStore.getValidAccessToken(userId),
+      async () => deps.tokenStore.forceRefreshAccessToken(userId),
+    );
+  registerWhoopTools(server, clientFor, (extra: any) => extra?.authInfo?.extra?.userId);
   return server;
 }
