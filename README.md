@@ -26,8 +26,7 @@ There are two ways to get WHOOP data into your AI client:
 
 ## 1-Click deploy on Railway
 
-<!-- Replace RAILWAY_TEMPLATE_URL_PLACEHOLDER with the published Railway template URL -->
-[![Deploy on Railway](https://railway.com/button.svg)](RAILWAY_TEMPLATE_URL_PLACEHOLDER)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/ZNtnVI?referralCode=zJwp1p&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 1. Click the button above — Railway provisions the app service and a Postgres
    database, and auto-generates `ENCRYPTION_KEY` and `SESSION_SECRET`.
