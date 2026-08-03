@@ -14,10 +14,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": ["mcp", "whoop", "model-context-protocol"],
+  "author": "Christian Axtmann",
+  "license": "MIT",
+  "description": "Multi-user MCP server exposing WHOOP fitness data to AI clients.",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "cookie-session": "^2.1.1",
