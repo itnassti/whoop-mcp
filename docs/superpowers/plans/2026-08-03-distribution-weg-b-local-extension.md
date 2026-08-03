@@ -487,13 +487,12 @@ Expected: FAIL — `src/local/config.ts` fehlt.
 
 - [ ] **Step 3: `config.ts` implementieren**
 
-`DEFAULT_REDIRECT_URI` ist der publizierte statische Callback (Task 5); bis dahin Platzhalter-Domain, klar markiert:
+`DEFAULT_REDIRECT_URI` ist der publizierte statische Callback (Task 5) — Repo ist `github.com/caxtmann/whoop-mcp`, also die konkrete Pages-URL:
 
 ```ts
 import { localConfigDir } from "./paths.js";
 
-// Replace <OWNER>/<REPO> with the published GitHub Pages callback once Task 5 is live.
-export const DEFAULT_REDIRECT_URI = "https://<OWNER>.github.io/<REPO>/callback/";
+export const DEFAULT_REDIRECT_URI = "https://caxtmann.github.io/whoop-mcp/callback/";
 
 export interface LocalConfig {
   clientId: string; clientSecret: string; redirectUri: string; configDir: string;
@@ -619,18 +618,19 @@ git commit -m "feat(local): stdio entrypoint with WHOOP data tools + login tools
 
 ### Task 5: Statische https-Callback-Seite (GitHub Pages)
 
-Enthält einen **manuellen** GitHub-Pages-Publish-Schritt. Die Seite hält keinen Secret; sie zeigt nur `code`/`state` zum Kopieren.
+Enthält einen **manuellen** GitHub-Pages-Publish-Schritt. Die Seite hält keinen Secret; sie zeigt nur `code`/`state` zum Kopieren. Repo: `github.com/caxtmann/whoop-mcp` → Ziel-URL `https://caxtmann.github.io/whoop-mcp/callback/`. Damit die URL genau `…/whoop-mcp/callback/` lautet, liegt die Seite unter `callback/` im **Repo-Root** und Pages wird aus `main`/root serviert. `.nojekyll` verhindert Jekyll-Verarbeitung.
 
 **Files:**
-- Create: `site/callback/index.html`
+- Create: `callback/index.html`
+- Create: `.nojekyll` (leer)
 
 **Interfaces:**
 - Consumes: nichts.
-- Produces: eine öffentliche URL `https://<OWNER>.github.io/<REPO>/callback/`, die (a) in `DEFAULT_REDIRECT_URI` (Task 4) und (b) in der Weg-B-Doku (Task 6) eingesetzt wird, und die jeder Self-Hoster als WHOOP-Redirect-URI registriert.
+- Produces: die öffentliche URL `https://caxtmann.github.io/whoop-mcp/callback/`, die bereits in `DEFAULT_REDIRECT_URI` (Task 4) steht und in der Weg-B-Doku (Task 6) genutzt wird; jeder Self-Hoster registriert sie als WHOOP-Redirect-URI.
 
-- [ ] **Step 1: Seite schreiben**
+- [ ] **Step 1: Seite + `.nojekyll` schreiben**
 
-`site/callback/index.html` — liest Query-Parameter und zeigt sie an; reines HTML/JS, keine externen Ressourcen:
+`callback/index.html` — liest Query-Parameter und zeigt sie an; reines HTML/JS, keine externen Ressourcen. Zusätzlich eine leere Datei `.nojekyll` im Repo-Root anlegen.
 
 ```html
 <!doctype html>
@@ -661,22 +661,14 @@ button{padding:.4rem .8rem}</style></head>
 - [ ] **Step 2: Commit**
 
 ```bash
-git add site/callback/index.html
+git add callback/index.html .nojekyll
 git commit -m "feat(local): static GitHub Pages callback page for local WHOOP login"
 ```
 
 - [ ] **Step 3: GitHub Pages veröffentlichen (MANUELL, Nutzer)**
 
-Repo-Settings → Pages → Source: `main`/`/` (oder `/docs`; wenn `site/` genutzt wird, ggf. auf `/docs` umbenennen, je nach Pages-Setup) → veröffentlichen. Die resultierende URL `https://<OWNER>.github.io/<REPO>/callback/` notieren.
-Verifikation: die URL im Browser öffnen mit `?code=abc&state=xyz` → zeigt `abc` und `xyz` an.
-
-- [ ] **Step 4: `DEFAULT_REDIRECT_URI` einsetzen (nach Publish)**
-
-`<OWNER>`/`<REPO>`-Platzhalter in `src/local/config.ts` (Task 4) durch die echte Pages-URL ersetzen, `npm run build`, kurzer Re-Test von `test/local-config.test.ts` (der Default-Redirect-Regex bleibt gültig). Commit:
-
-```bash
-git commit -am "chore(local): set published GitHub Pages callback as default redirect URI"
-```
+Repo-Settings → Pages → Source: „Deploy from a branch" → Branch `main`, Ordner `/ (root)` → Save. Nach dem Build ist die Seite unter `https://caxtmann.github.io/whoop-mcp/callback/` erreichbar.
+Verifikation: die URL im Browser mit `?code=abc&state=xyz` öffnen → zeigt `abc` und `xyz` an. (Da `DEFAULT_REDIRECT_URI` bereits diese URL ist, ist kein weiterer Code-Swap nötig.)
 
 ---
 
@@ -803,7 +795,7 @@ git commit -m "docs: document Weg B — local Claude Desktop extension setup"
 - §4.2 Login via statische https-Seite + Paste, als zwei MCP-Tools `whoop_login`/`whoop_complete_login` → Tasks 3 (Kern) + 4 (Tools) + 5 (Seite). ✅
 - §5 Client-Einbindung (Claude Desktop, Weg B) → Task 7. ✅
 
-**Placeholder-Scan:** `<OWNER>`/`<REPO>` in `DEFAULT_REDIRECT_URI` und der Callback-URL sind bewusste Einsetzstellen, die erst nach dem manuellen GitHub-Pages-Publish (Task 5 Step 3) einen echten Wert bekommen — Task 5 Step 4 setzt sie. Sonst keine offenen Lücken.
+**Placeholder-Scan:** Keine offenen Platzhalter mehr — Owner/Repo (`caxtmann/whoop-mcp`) und die konkrete Callback-URL stehen fest in `DEFAULT_REDIRECT_URI` (Task 4) und Task 5. Der einzige „manuelle" Rest ist das Aktivieren von GitHub Pages (Task 5 Step 3) und die Claude-Desktop-E2E-Installation (Task 6 Step 5) — Umgebungs-/Nutzer-Schritte, kein Code-Platzhalter.
 
 **Typ-Konsistenz:** `registerWhoopTools(server, clientFor, userIdOf)` — identisch in Task 1 (Definition) und Task 4 (Aufruf). `LocalTokenStore`-Konstruktor + Methoden — identisch in Task 2 (Definition), Task 3 (Nutzung als `store`) und Task 4 (Instanzierung). `startLogin`/`completeLogin`-Signaturen — identisch in Task 3 (Definition) und Task 4 (Aufruf). `loadLocalConfig`/`LocalConfig` — Task 4. Konsistent.
 
