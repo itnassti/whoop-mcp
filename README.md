@@ -11,83 +11,109 @@ clients, delegating identity to WHOOP as the upstream identity provider.
 Data is fetched live from the WHOOP API on every tool call — no fitness data
 is cached or stored. Postgres only holds user identity and encrypted tokens.
 
-## Environment variables
+## Two ways to use this
 
-Copy `.env.example` to `.env` and fill in:
+There are two ways to get WHOOP data into your AI client:
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | Postgres connection string (Railway provisions this automatically when you attach a Postgres plugin). |
-| `ENCRYPTION_KEY` | 32-byte hex key used to encrypt stored WHOOP tokens at rest. Generate with `openssl rand -hex 32`. |
-| `WHOOP_CLIENT_ID` | Client ID from your WHOOP developer app. |
-| `WHOOP_CLIENT_SECRET` | Client secret from your WHOOP developer app. |
-| `PUBLIC_BASE_URL` | The publicly reachable base URL of this deployment, e.g. `https://your-app.up.railway.app` (no trailing slash). Used to build OAuth redirect/callback URLs. |
-| `SESSION_SECRET` | Secret used to sign the dashboard's session cookie. Generate with `openssl rand -hex 32`. |
-| `PORT` | Port to listen on. Defaults to `8080`; Railway sets this automatically. |
+- **A. Self-host as a remote connector** (this README) — run your own instance
+  (Railway 1-click, Docker, Fly.io, Render, ...) and connect any MCP client to
+  it over HTTP, either via OAuth or a personal access token.
+- **B. Local Claude Desktop extension** — a packaged extension that runs
+  locally without hosting anything yourself. This is coming separately; see
+  "Way B" once it's available.
 
-## WHOOP developer app setup
+## 1-Click deploy on Railway
+
+<!-- Replace RAILWAY_TEMPLATE_URL_PLACEHOLDER with the published Railway template URL -->
+[![Deploy on Railway](https://railway.com/button.svg)](RAILWAY_TEMPLATE_URL_PLACEHOLDER)
+
+1. Click the button above — Railway provisions the app service and a Postgres
+   database, and auto-generates `ENCRYPTION_KEY` and `SESSION_SECRET`.
+2. Copy your new Railway domain.
+3. Create a WHOOP developer app (see **WHOOP app setup** below).
+4. Enter `WHOOP_CLIENT_ID` and `WHOOP_CLIENT_SECRET` as service variables in
+   Railway, then redeploy.
+5. Connect an AI client (see **Connect an AI client** below).
+
+## WHOOP app setup
 
 1. Register a developer application at the [WHOOP Developer Portal](https://developer.whoop.com/).
 2. Set the app's **redirect URI** to:
 
    ```
-   ${PUBLIC_BASE_URL}/whoop/callback
+   https://<your-domain>/whoop/callback
    ```
 
-   For example: `https://your-app.up.railway.app/whoop/callback`.
-3. Request the scopes: `read:recovery`, `read:sleep`, `read:workout`,
-   `read:cycles`, `read:profile`, `read:body_measurement`, `offline`.
-4. Copy the client ID and secret into `WHOOP_CLIENT_ID` / `WHOOP_CLIENT_SECRET`.
+3. Request the scopes:
 
-## Running locally
+   ```
+   read:recovery read:sleep read:workout read:cycles read:profile read:body_measurement offline
+   ```
+
+4. Copy the client ID and secret — you'll enter these as `WHOOP_CLIENT_ID` /
+   `WHOOP_CLIENT_SECRET`.
+
+## Running on other hosts
+
+Copy `.env.example` to `.env` and fill in:
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | Postgres connection string. |
+| `ENCRYPTION_KEY` | 32-byte hex key used to encrypt stored WHOOP tokens at rest. Generate with `openssl rand -hex 32`. |
+| `WHOOP_CLIENT_ID` | Client ID from your WHOOP developer app. |
+| `WHOOP_CLIENT_SECRET` | Client secret from your WHOOP developer app. |
+| `PUBLIC_BASE_URL` | The publicly reachable base URL of this deployment, e.g. `https://your-app.example.com` (no trailing slash). Used to build OAuth redirect/callback URLs. On Railway this is derived automatically from `RAILWAY_PUBLIC_DOMAIN` when not set explicitly; on other hosts you must set it explicitly. |
+| `SESSION_SECRET` | Secret used to sign the dashboard's session cookie. Generate with `openssl rand -hex 32`. |
+| `PORT` | Port to listen on. Defaults to `8080`. |
+
+### Docker / your own VPS
 
 ```bash
-npm install
-npm run db:migrate
-npm run dev
+docker build -t whoop-mcp . && docker run -p 8080:8080 --env-file .env whoop-mcp
 ```
 
-`GET /healthz` should return `{"ok":true}` once the server is up.
+Set `PUBLIC_BASE_URL` explicitly in your `.env` — there's no
+`RAILWAY_PUBLIC_DOMAIN` to fall back on outside Railway.
 
-## Deploying to Railway
+### Fly.io
 
-This repo includes a `railway.json` (Nixpacks builder). On deploy, Railway
-builds the project (`npm run build`) and then runs:
+`fly launch` uses the repo's Dockerfile. Set secrets via
+`fly secrets set KEY=value ...`, and provision Postgres via `fly postgres create`.
 
-```
-npm run db:migrate && npm start
-```
+### Render
 
-Steps:
+Create a Web Service from this repo using the Docker environment, add a
+Postgres add-on, and set the env vars from the table above in the Render
+dashboard.
 
-1. Create a Railway project and attach a Postgres plugin (sets `DATABASE_URL`).
-2. Set the remaining environment variables from the table above.
-3. Deploy. Confirm `GET /healthz` and
-   `GET /.well-known/oauth-authorization-server` respond once live.
-4. Update your WHOOP developer app's redirect URI to match the deployed
-   `PUBLIC_BASE_URL`.
+## Connect an AI client
 
-## Connecting clients
+### Browser (Claude.ai / ChatGPT)
 
-### Claude / ChatGPT (remote connector, OAuth)
+1. Add a remote MCP connector pointing at:
 
-Add a remote MCP connector pointing at:
+   ```
+   https://<your-domain>/mcp
+   ```
 
-```
-${PUBLIC_BASE_URL}/mcp
-```
+2. The client discovers the OAuth endpoints automatically, redirects you
+   through "Connect WHOOP", and starts calling tools (e.g.
+   `get_daily_summary`) under your own WHOOP identity.
 
-The client will discover the OAuth endpoints automatically, redirect you
-through "Connect WHOOP", and start calling tools (e.g. `get_daily_summary`)
-under your own WHOOP identity.
+### Claude Desktop (remote)
 
-### Local clients (Cursor, Cline, etc.) via personal access token
+Add a custom connector with the same URL, `https://<your-domain>/mcp`, and
+go through the same "Connect WHOOP" OAuth flow.
 
-1. Open the dashboard at `${PUBLIC_BASE_URL}/dashboard` and click **Connect WHOOP**.
+### Optional: local clients via personal access token
+
+1. Open the dashboard at `https://<your-domain>/dashboard` and click
+   **Connect WHOOP**.
 2. Once connected, click **Create personal access token** and copy the token
    (it is only shown once).
-3. Configure your client's `mcp.json` to call `${PUBLIC_BASE_URL}/mcp` with
-   the token as a bearer header, for example:
+3. Configure your client's `mcp.json` to call `https://<your-domain>/mcp`
+   with the token as a bearer header, for example:
 
 ```json
 {
