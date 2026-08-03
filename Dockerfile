@@ -11,4 +11,4 @@ COPY . .
 RUN npm run build
 
 EXPOSE 8080
-CMD ["sh", "-c", "npm run db:migrate && npm start"]
+CMD ["sh", "-c", "node dist/migrate.js && npm start"]
