@@ -5,7 +5,9 @@ export interface AppConfig {
   whoopClientId: string; whoopClientSecret: string;
   publicBaseUrl: string; port: number;
   sessionSecret: string;
-  // Optional allowlist of WHOOP account emails permitted to connect. Empty = open to anyone.
+  // Access control: the allowlist only applies when restrictAccess is true.
+  // restrictAccess=false (default) keeps the server open regardless of the list.
+  restrictAccess: boolean;
   allowedWhoopEmails: string[];
 }
 
@@ -29,10 +31,11 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   const p = Schema.parse({ ...env, PUBLIC_BASE_URL: publicBaseUrl });
   const allowedWhoopEmails = (env.ALLOWED_WHOOP_EMAILS ?? "")
     .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const restrictAccess = /^(true|1|yes|on)$/i.test((env.RESTRICT_ACCESS ?? "").trim());
   return {
     databaseUrl: p.DATABASE_URL, encryptionKey: p.ENCRYPTION_KEY,
     whoopClientId: p.WHOOP_CLIENT_ID, whoopClientSecret: p.WHOOP_CLIENT_SECRET,
     publicBaseUrl: p.PUBLIC_BASE_URL, port: Number(p.PORT),
-    sessionSecret: p.SESSION_SECRET, allowedWhoopEmails,
+    sessionSecret: p.SESSION_SECRET, restrictAccess, allowedWhoopEmails,
   };
 }

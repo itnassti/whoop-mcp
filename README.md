@@ -76,7 +76,8 @@ Copy `.env.example` to `.env` and fill in:
 | `PUBLIC_BASE_URL` | The publicly reachable base URL of this deployment, e.g. `https://your-app.example.com` (no trailing slash). Used to build OAuth redirect/callback URLs. On Railway this is derived automatically from `RAILWAY_PUBLIC_DOMAIN` when not set explicitly; on other hosts you must set it explicitly. |
 | `SESSION_SECRET` | Secret used to sign the dashboard's session cookie. Generate with `openssl rand -hex 32`. |
 | `PORT` | Port to listen on. Defaults to `8080`. |
-| `ALLOWED_WHOOP_EMAILS` | Optional. Comma-separated WHOOP account emails allowed to connect. Blank (default) = open to anyone with the URL. See *Sharing your instance with friends* below. |
+| `RESTRICT_ACCESS` | Optional. `true` to enforce the allowlist below; anything else (default) leaves the server open to anyone with the URL. See *Sharing your instance with friends*. |
+| `ALLOWED_WHOOP_EMAILS` | Optional. Comma-separated WHOOP account emails allowed to connect **when `RESTRICT_ACCESS=true`**. Ignored when restriction is off. |
 
 ### Docker / your own VPS
 
@@ -162,10 +163,18 @@ Two things to keep in mind before inviting people:
 
 **Restricting who can connect.** By default anyone who reaches your URL can
 connect their WHOOP and use the server. To lock it down to specific people, set
-the `ALLOWED_WHOOP_EMAILS` env var to a comma-separated list of the WHOOP-account
-emails you want to allow, e.g. `ALLOWED_WHOOP_EMAILS=me@example.com,friend@example.com`.
-Anyone else is rejected at login (no account or token is created). Leave it blank
-to keep the server open.
+**both** env vars:
+
+```
+RESTRICT_ACCESS=true
+ALLOWED_WHOOP_EMAILS=me@example.com,friend@example.com
+```
+
+With `RESTRICT_ACCESS=true`, only those WHOOP-account emails may connect; everyone
+else is rejected at login (no account or token is created). Leave `RESTRICT_ACCESS`
+unset (or `false`) to keep the server open — the email list is then ignored. The
+server logs a warning at startup if the two are misconfigured (restriction on with
+an empty list, or a list set while restriction is off).
 
 ## Local Claude Desktop extension (Way B)
 

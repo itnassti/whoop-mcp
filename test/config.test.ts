@@ -48,4 +48,11 @@ describe("loadConfig", () => {
     const c = loadConfig({ ...base, ALLOWED_WHOOP_EMAILS: "a@b.com,  C@D.com , " } as any);
     expect(c.allowedWhoopEmails).toEqual(["a@b.com", "c@d.com"]);
   });
+
+  it("parses RESTRICT_ACCESS as a boolean, default false", () => {
+    expect(loadConfig(base as any).restrictAccess).toBe(false);
+    expect(loadConfig({ ...base, RESTRICT_ACCESS: "true" } as any).restrictAccess).toBe(true);
+    expect(loadConfig({ ...base, RESTRICT_ACCESS: "1" } as any).restrictAccess).toBe(true);
+    expect(loadConfig({ ...base, RESTRICT_ACCESS: "false" } as any).restrictAccess).toBe(false);
+  });
 });
