@@ -42,4 +42,10 @@ describe("loadConfig", () => {
     const { PUBLIC_BASE_URL, ...rest } = base;
     expect(() => loadConfig(rest as any)).toThrow();
   });
+
+  it("parses ALLOWED_WHOOP_EMAILS into a trimmed, lowercased list (empty when unset)", () => {
+    expect(loadConfig(base as any).allowedWhoopEmails).toEqual([]);
+    const c = loadConfig({ ...base, ALLOWED_WHOOP_EMAILS: "a@b.com,  C@D.com , " } as any);
+    expect(c.allowedWhoopEmails).toEqual(["a@b.com", "c@d.com"]);
+  });
 });

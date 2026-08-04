@@ -17,7 +17,14 @@ export interface CallbackDeps {
   tokenStore: TokenStore;
   credentials: CredentialProvider;
   publicBaseUrl: string;
+  allowedWhoopEmails: string[];
   fetchImpl?: FetchImpl;
+}
+
+// Access gate for self-hosters: an empty allowlist is open to anyone; otherwise the
+// WHOOP account's email must be listed. Comparison is case-insensitive.
+export function isWhoopEmailAllowed(email: string | null, allowlist: string[]): boolean {
+  return allowlist.length === 0 || (email != null && allowlist.includes(email.toLowerCase()));
 }
 
 const sha256hex = (raw: string) => createHash("sha256").update(raw).digest("hex");
@@ -82,6 +89,11 @@ export function createWhoopCallbackRouter(deps: CallbackDeps): Router {
       const profile = await client.getProfile();
       const whoopUserId = String(profile.user_id);
       const email = typeof profile.email === "string" ? profile.email : null;
+
+      if (!isWhoopEmailAllowed(email, deps.allowedWhoopEmails)) {
+        res.status(403).send("This WHOOP account is not allowed on this server.");
+        return;
+      }
 
       const userId = await deps.tokenStore.upsertUserAndTokens(whoopUserId, email, tokenSet);
 

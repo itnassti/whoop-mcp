@@ -1,11 +1,12 @@
 {
   "manifest_version": "0.4",
   "name": "whoop-mcp-local",
-  "display_name": "WHOOP (local)",
+  "display_name": "Whoopie",
   "version": "0.1.0",
-  "description": "Access your own WHOOP data (recovery, sleep, workouts, cycles, profile) locally in Claude Desktop.",
+  "description": "Access your own WHOOP data (recovery, sleep, workouts, cycles, profile) locally in Claude Desktop. Unofficial — not affiliated with or endorsed by WHOOP.",
   "author": { "name": "Christian Axtmann" },
   "license": "MIT",
+  "icon": "icon.png",
   "server": {
     "type": "node",
     "entry_point": "dist/local/index.js",

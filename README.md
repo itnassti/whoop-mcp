@@ -11,6 +11,11 @@ clients, delegating identity to WHOOP as the upstream identity provider.
 Data is fetched live from the WHOOP API on every tool call — no fitness data
 is cached or stored. Postgres only holds user identity and encrypted tokens.
 
+> **Disclaimer:** This is an independent, community open-source project. It is
+> **not affiliated with, endorsed by, or sponsored by WHOOP.** "WHOOP" is a
+> trademark of Whoop, Inc., used here only to describe what the software
+> connects to.
+
 ## Two ways to use this
 
 There are two ways to get WHOOP data into your AI client:
@@ -71,6 +76,7 @@ Copy `.env.example` to `.env` and fill in:
 | `PUBLIC_BASE_URL` | The publicly reachable base URL of this deployment, e.g. `https://your-app.example.com` (no trailing slash). Used to build OAuth redirect/callback URLs. On Railway this is derived automatically from `RAILWAY_PUBLIC_DOMAIN` when not set explicitly; on other hosts you must set it explicitly. |
 | `SESSION_SECRET` | Secret used to sign the dashboard's session cookie. Generate with `openssl rand -hex 32`. |
 | `PORT` | Port to listen on. Defaults to `8080`. |
+| `ALLOWED_WHOOP_EMAILS` | Optional. Comma-separated WHOOP account emails allowed to connect. Blank (default) = open to anyone with the URL. See *Sharing your instance with friends* below. |
 
 ### Docker / your own VPS
 
@@ -153,6 +159,13 @@ Two things to keep in mind before inviting people:
 - **Data responsibility:** once others connect, their (encrypted) WHOOP tokens
   live in *your* database, and you become responsible for that data (e.g. GDPR
   if you're in the EU). Only invite people who are comfortable with that.
+
+**Restricting who can connect.** By default anyone who reaches your URL can
+connect their WHOOP and use the server. To lock it down to specific people, set
+the `ALLOWED_WHOOP_EMAILS` env var to a comma-separated list of the WHOOP-account
+emails you want to allow, e.g. `ALLOWED_WHOOP_EMAILS=me@example.com,friend@example.com`.
+Anyone else is rejected at login (no account or token is created). Leave it blank
+to keep the server open.
 
 ## Local Claude Desktop extension (Way B)
 

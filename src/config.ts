@@ -5,6 +5,8 @@ export interface AppConfig {
   whoopClientId: string; whoopClientSecret: string;
   publicBaseUrl: string; port: number;
   sessionSecret: string;
+  // Optional allowlist of WHOOP account emails permitted to connect. Empty = open to anyone.
+  allowedWhoopEmails: string[];
 }
 
 const Schema = z.object({
@@ -25,10 +27,12 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     env.PUBLIC_BASE_URL ||
     (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : undefined);
   const p = Schema.parse({ ...env, PUBLIC_BASE_URL: publicBaseUrl });
+  const allowedWhoopEmails = (env.ALLOWED_WHOOP_EMAILS ?? "")
+    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   return {
     databaseUrl: p.DATABASE_URL, encryptionKey: p.ENCRYPTION_KEY,
     whoopClientId: p.WHOOP_CLIENT_ID, whoopClientSecret: p.WHOOP_CLIENT_SECRET,
     publicBaseUrl: p.PUBLIC_BASE_URL, port: Number(p.PORT),
-    sessionSecret: p.SESSION_SECRET,
+    sessionSecret: p.SESSION_SECRET, allowedWhoopEmails,
   };
 }

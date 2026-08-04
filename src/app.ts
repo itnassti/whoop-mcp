@@ -25,7 +25,7 @@ export function createApp(config: AppConfig): express.Express {
 
   const issuerUrl = new URL(config.publicBaseUrl);
   app.use(mcpAuthRouter({ provider, issuerUrl, baseUrl: issuerUrl, scopesSupported: ["mcp"] }));
-  app.use(createWhoopCallbackRouter({ db, tokenStore, credentials, publicBaseUrl: config.publicBaseUrl }));
+  app.use(createWhoopCallbackRouter({ db, tokenStore, credentials, publicBaseUrl: config.publicBaseUrl, allowedWhoopEmails: config.allowedWhoopEmails }));
   app.use("/dashboard", createDashboardRouter({ provider, tokenStore, sessionSecret: config.sessionSecret }));
 
   const auth = requireBearerAuth({ verifier: provider, requiredScopes: ["mcp"] });
