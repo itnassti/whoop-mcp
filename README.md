@@ -38,6 +38,10 @@ There are two ways to get WHOOP data into your AI client:
 
 ## WHOOP app setup
 
+> This is for the **self-hosted** instance (Way A). The local extension (Way B)
+> uses a different redirect URI — see its own setup in the *Local Claude Desktop
+> extension* section below.
+
 1. Register a developer application at the [WHOOP Developer Portal](https://developer.whoop.com/).
 2. Set the app's **redirect URI** to:
 
@@ -166,8 +170,9 @@ Either build it yourself:
 npm run bundle:local
 ```
 
-which produces `whoop-mcp.mcpb` in the repo root, or download the latest
-`whoop-mcp.mcpb` from the project's releases.
+which produces `whoop-mcp.mcpb` in the repo root, or — if you don't have Node
+set up — download the prebuilt `whoop-mcp.mcpb` from the
+[latest release](https://github.com/caxtmann/whoop-mcp/releases/latest).
 
 ### 2. Install it
 
@@ -237,3 +242,7 @@ npm run dev
 ```
 
 The server will start at `http://localhost:8080`. Check health with `GET /healthz`, which returns `{"ok":true}` once running.
+
+## License
+
+[MIT](LICENSE) © Christian Axtmann
