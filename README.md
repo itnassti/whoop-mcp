@@ -39,7 +39,10 @@ There are two ways to get WHOOP data into your AI client:
 3. Create a WHOOP developer app (see **WHOOP app setup** below).
 4. Enter `WHOOP_CLIENT_ID` and `WHOOP_CLIENT_SECRET` as service variables in
    Railway, then redeploy.
-5. Connect an AI client (see **Connect an AI client** below).
+5. *(Optional)* To limit who can connect, set `RESTRICT_ACCESS=true` and
+   `ALLOWED_WHOOP_EMAILS=…` — both are offered as optional fields on the deploy
+   form and can be changed later. See **Sharing your instance with friends** below.
+6. Connect an AI client (see **Connect an AI client** below).
 
 ## WHOOP app setup
 
