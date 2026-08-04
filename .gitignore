@@ -12,3 +12,9 @@ mcpb/dist
 mcpb/node_modules
 mcpb/package.json
 mcpb/package-lock.json
+
+# Personal data / local Claude config (never share)
+example-export/
+.claude/settings.json
+.env.*
+!.env.example
