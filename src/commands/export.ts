@@ -20,9 +20,9 @@ async function main() {
   );
 
   const end = new Date().toISOString();
-  const start = new Date(Date.now() - 3 * 86_400_000).toISOString();
-  const range = { start, end, limit: 100 };
-
+  const start = "2015-01-01T00:00:00.000Z";
+const range = { start, end, limit: 10000 };
+  
   const [recovery, sleep, cycles, workouts, bodyMeasurement] = await Promise.all([
     client.getRecovery(range),
     client.getSleep(range),
