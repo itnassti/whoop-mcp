@@ -20,9 +20,9 @@ async function main() {
   );
 
   const end = new Date().toISOString();
-  const start = "2015-01-01T00:00:00.000Z";
-const range = { start, end, limit: 10000 };
-  
+  const start = new Date(Date.now() - 3 * 86_400_000).toISOString();
+  const range = { start, end, limit: 100 };
+
   const [recovery, sleep, cycles, workouts, bodyMeasurement] = await Promise.all([
     client.getRecovery(range),
     client.getSleep(range),
@@ -31,32 +31,31 @@ const range = { start, end, limit: 10000 };
     client.getBodyMeasurement(),
   ]);
 
-const sleepByCycle = new Map(sleep.map((x) => [x.cycle_id, x]));
-const cycleById = new Map(cycles.map((x) => [x.id, x]));
+  const sleepByCycle = new Map(sleep.map((x) => [x.cycle_id, x]));
+  const cycleById = new Map(cycles.map((x) => [x.id, x]));
 
-for (const r of recovery) {
-  const s = sleepByCycle.get(r.cycle_id);
-  const c = cycleById.get(r.cycle_id);
+  for (const r of recovery) {
+    const s = sleepByCycle.get(r.cycle_id);
+    const c = cycleById.get(r.cycle_id);
 
-  console.log("DAILY " + JSON.stringify({
-    recovery: r,
-    sleep: s ?? null,
-    cycle: c ?? null
+    console.log("DAILY " + JSON.stringify({
+      recovery: r,
+      sleep: s ?? null,
+      cycle: c ?? null,
+    }));
+  }
+
+  for (const w of workouts) {
+    console.log("WORKOUT " + JSON.stringify(w));
+  }
+
+  console.log("BODY " + JSON.stringify(bodyMeasurement));
+  console.log("COUNTS " + JSON.stringify({
+    recovery: recovery.length,
+    sleep: sleep.length,
+    cycles: cycles.length,
+    workouts: workouts.length,
   }));
-}
-
-for (const w of workouts) {
-  console.log("WORKOUT " + JSON.stringify(w));
-}
-
-console.log("BODY " + JSON.stringify(bodyMeasurement));
-
-console.log("COUNTS " + JSON.stringify({
-  recovery: recovery.length,
-  sleep: sleep.length,
-  cycles: cycles.length,
-  workouts: workouts.length
-}));
 }
 
 main().catch((error) => {
