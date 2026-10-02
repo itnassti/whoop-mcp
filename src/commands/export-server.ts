@@ -14,8 +14,16 @@ function sanitize(value: unknown): unknown {
   return value;
 }
 
-async function runExport() {
-  return await new Promise<Record<string, unknown>>((resolve, reject) => {
+type Snapshot = {
+  exportedAt: string;
+  daily: unknown[];
+  workouts: unknown[];
+  body: unknown;
+  counts: unknown;
+};
+
+async function runExport(): Promise<Snapshot> {
+  return await new Promise<Snapshot>((resolve, reject) => {
     const child = spawn(process.execPath, ["dist/commands/export.js"], { stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
@@ -42,33 +50,60 @@ async function runExport() {
 const key = process.env.EXPORT_KEY;
 if (!key) throw new Error("EXPORT_KEY is required");
 const port = Number(process.env.PORT || 8080);
-let cached: Record<string, unknown> | null = null;
-let running: Promise<Record<string, unknown>> | null = null;
+let cached: Snapshot | null = null;
+let running: Promise<Snapshot> | null = null;
 
 createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  if (url.searchParams.get("key") !== key) {
-    res.writeHead(401, { "content-type": "application/json", "cache-control": "no-store" });
-    return res.end(JSON.stringify({ error: "unauthorized" }));
-  }
+  res.setHeader("cache-control", "no-store");
+  res.setHeader("content-type", "application/json");
+
   if (url.pathname === "/health") {
-    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+    res.writeHead(200);
     return res.end(JSON.stringify({ ok: true }));
   }
+  if (url.searchParams.get("key") !== key) {
+    res.writeHead(401);
+    return res.end(JSON.stringify({ error: "unauthorized" }));
+  }
   if (url.pathname !== "/export") {
-    res.writeHead(404, { "content-type": "application/json", "cache-control": "no-store" });
+    res.writeHead(404);
     return res.end(JSON.stringify({ error: "not found" }));
   }
+
   try {
     if (!cached) {
       running ??= runExport();
       cached = await running;
     }
-    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
-    res.end(JSON.stringify(cached));
+    const kind = url.searchParams.get("kind") || "counts";
+    if (kind === "counts") {
+      res.writeHead(200);
+      return res.end(JSON.stringify({ exportedAt: cached.exportedAt, counts: cached.counts }));
+    }
+    if (kind === "body") {
+      res.writeHead(200);
+      return res.end(JSON.stringify({ exportedAt: cached.exportedAt, body: cached.body }));
+    }
+    const source = kind === "daily" ? cached.daily : kind === "workouts" ? cached.workouts : null;
+    if (!source) {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ error: "kind must be counts, body, daily, or workouts" }));
+    }
+    const offset = Math.max(0, Number(url.searchParams.get("offset") || 0));
+    const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit") || 25)));
+    res.writeHead(200);
+    return res.end(JSON.stringify({
+      exportedAt: cached.exportedAt,
+      kind,
+      offset,
+      limit,
+      total: source.length,
+      items: source.slice(offset, offset + limit),
+    }));
   } catch (error) {
     const message = error instanceof Error ? error.message : "export failed";
-    res.writeHead(500, { "content-type": "application/json", "cache-control": "no-store" });
+    res.writeHead(500);
     res.end(JSON.stringify({ error: message }));
   }
 }).listen(port, "0.0.0.0", () => console.log(`export bridge listening on ${port}`));
