@@ -31,15 +31,32 @@ const range = { start, end, limit: 10000 };
     client.getBodyMeasurement(),
   ]);
 
-  console.log(JSON.stringify({
-    exportedAt: new Date().toISOString(),
-    dataWindow: { start, end },
-    recovery,
-    sleep,
-    cycles,
-    workouts,
-    bodyMeasurement,
+const sleepByCycle = new Map(sleep.map((x) => [x.cycle_id, x]));
+const cycleById = new Map(cycles.map((x) => [x.id, x]));
+
+for (const r of recovery) {
+  const s = sleepByCycle.get(r.cycle_id);
+  const c = cycleById.get(r.cycle_id);
+
+  console.log("DAILY " + JSON.stringify({
+    recovery: r,
+    sleep: s ?? null,
+    cycle: c ?? null
   }));
+}
+
+for (const w of workouts) {
+  console.log("WORKOUT " + JSON.stringify(w));
+}
+
+console.log("BODY " + JSON.stringify(bodyMeasurement));
+
+console.log("COUNTS " + JSON.stringify({
+  recovery: recovery.length,
+  sleep: sleep.length,
+  cycles: cycles.length,
+  workouts: workouts.length
+}));
 }
 
 main().catch((error) => {
